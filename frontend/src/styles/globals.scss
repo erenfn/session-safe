@@ -1,0 +1,47 @@
+@use './variables.css';
+
+$base-font-size: var(--font-header);
+
+@mixin text-style($type, $font-weight: regular) {
+  color: var(--main-text-color);
+  @if $type == header-text {
+    font-size: var(--font-header);
+    line-height: 24px;
+  } @else if $type == informative {
+    font-size: var(--font-informative);
+    line-height: 11px;
+  } @else {
+    font-size: var(--font-regular);
+    line-height: 13px;
+  }
+
+  @if $font-weight == semibold {
+    font-weight: 600;
+  } @else {
+    font-weight: 400;
+  }
+}
+
+@function px-to-rem($size) {
+  @return $size / $base-font-size * 1rem;
+}
+
+/* Global Scrollbar Styles */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--gray-300) var(--background-color);
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background-color: var(--background-color);
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: var(--gray-300);
+  border: 2px solid var(--background-color);
+}

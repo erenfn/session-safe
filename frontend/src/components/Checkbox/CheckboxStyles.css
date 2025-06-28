@@ -1,0 +1,36 @@
+.checkbox {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+.checkbox .MuiCheckbox-root {
+  border: none;
+  outline: none;
+}
+.checkbox-label {
+  font-size: var(--font-header);
+}
+
+.primary .MuiCheckbox-root {
+  color: var(--primary);
+}
+
+.secondary .MuiCheckbox-root {
+  color: #808080e5;
+}
+
+.primary .MuiCheckbox-root.Mui-checked {
+  color: var(--primary);
+}
+
+.secondary .MuiCheckbox-root.Mui-checked {
+  color: #808080e5;
+}
+
+.primary .MuiCheckbox-root.MuiCheckbox-indeterminate {
+  color: var(--primary);
+}
+
+.secondary .MuiCheckbox-root.MuiCheckbox-indeterminate {
+  color: #808080e5;
+}

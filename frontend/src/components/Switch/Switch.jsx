@@ -2,8 +2,6 @@ import PropTypes from 'prop-types';
 import './Switch.css';
 
 /**
- * Switch components for both HRM and Onboarding applications.
- *
  * Props:
  * - id<String>: Standard input id attribute
  *

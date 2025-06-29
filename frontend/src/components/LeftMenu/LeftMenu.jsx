@@ -7,6 +7,7 @@ import {
 } from '@mui/material';
 import {
   HomeOutlined as HomeIcon,
+  ListAlt as SessionsIcon,
 } from '@mui/icons-material';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 import styles from './LeftMenu.module.css';
@@ -30,11 +31,18 @@ function LeftMenu() {
 
   const adminMenuItems = [
     ...menuItems,
-    ...(userInfo?.role === 'admin' ? [{
-      text: 'Settings',
-      icon: <SettingsOutlinedIcon style={{ color: 'var(--menu-icon-color)' }} />,
-      route: '/settings',
-    }] : [])
+    ...(userInfo?.role === 'admin' ? [
+      {
+        text: 'Sessions',
+        icon: <SessionsIcon style={{ color: 'var(--menu-icon-color)' }} />,
+        route: '/sessions',
+      },
+      {
+        text: 'Settings',
+        icon: <SettingsOutlinedIcon style={{ color: 'var(--menu-icon-color)' }} />,
+        route: '/settings',
+      }
+    ] : [])
   ];
 
   const handleNavigation = (route) => {

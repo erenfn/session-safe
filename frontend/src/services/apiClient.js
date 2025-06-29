@@ -26,3 +26,18 @@ apiClient.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+export async function createSession({ userId, targetDomain }) {
+  const response = await apiClient.post('/session', { userId, targetDomain });
+  return response.data;
+}
+
+export async function terminateAllSessions() {
+  const response = await apiClient.post('/session/terminate-all');
+  return response.data;
+}
+
+export async function terminateUserSessions(userId) {
+  const response = await apiClient.post(`/session/terminate-user/${userId}`);
+  return response.data;
+}

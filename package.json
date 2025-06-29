@@ -1,6 +1,7 @@
 {
   "name": "session-safe",
-  "version": "1.0.0",  "scripts": {
+  "version": "1.0.0",
+  "scripts": {
     "docker-up:dev": "docker compose -f docker-compose.dev.yml up",
     "docker-up:prod": "docker compose -f docker-compose.prod.yml up",
     "docker-up:prod-d": "docker compose -f docker-compose.prod.yml up -d",
@@ -11,5 +12,8 @@
   },
   "keywords": [],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "dockerode": "^4.0.7"
+  }
 }

@@ -27,3 +27,24 @@ npm run dockerUp
 ```
 
 This will start the application with PostgreSQL and Redis.
+
+## Browser Session Container
+
+A Dockerfile (`browser-session.Dockerfile`) is provided to launch a Linux desktop with Chromium browser, VNC server, and noVNC for browser-based access.
+
+### Build the image
+
+```sh
+docker build -f browser-session.Dockerfile -t browser-session .
+```
+
+### Run the container
+
+```sh
+docker run -p 5901:5901 -p 6080:6080 browser-session
+```
+
+- VNC server: `vnc://localhost:5901` (default password: `1234`)
+- noVNC (browser): [http://localhost:6080/vnc.html](http://localhost:6080/vnc.html)
+
+The container launches XFCE desktop and Chromium browser. Use the noVNC web client for easy access from your browser.

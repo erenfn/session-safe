@@ -6,6 +6,7 @@ import PasswordResetPage from './scenes/login/PassswordResetPage';
 import ForgotPasswordPage from './scenes/login/ForgotPasswordPage';
 import CheckYourEmailPage from './scenes/login/CheckYourEmailPage';
 import SetNewPasswordPage from './scenes/login/SetNewPassword';
+import Sessions from './scenes/sessions/Sessions';
 import Private from '@components/Private';
 import HomePageTemplate from './templates/HomePageTemplate';
 
@@ -21,6 +22,7 @@ const App = () => {
     <Routes>
       <Route path="/" element={<Private Component={HomePageTemplate} />}>
         <Route index element={<Home />} />
+        <Route path="sessions" element={<Sessions />} />
       </Route>
 
       <Route path="/login" element={<LoginPage isAdmin={isAdminLogin} />} />

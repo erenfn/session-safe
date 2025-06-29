@@ -6,9 +6,74 @@ import { verifyToken } from '../utils/jwt.helper';
 import StatusError from '../utils/statusError';
 import TokenService from '../service/token.service';
 import UserService from '../service/user.service';
+import UserRole from '../enums/userRole.enum';
 
 const tokenService = new TokenService();
 const userService = new UserService();
+
+// Check if user has admin role
+export const isAdmin = (role?: string): boolean => role === UserRole.ADMIN;
+
+// Validate admin access
+export const requireAdmin = (req: UserRequestInterface, res: Response): boolean => {
+  if (!req.user?.role) {
+    res.status(401).json({ error: 'Authentication required' });
+    return false;
+  }
+  
+  if (!isAdmin(req.user.role)) {
+    res.status(403).json({ error: 'Admin access required' });
+    return false;
+  }
+  
+  return true;
+};
+
+// Validate user permissions (admin or self)
+export const requireAdminOrSelf = (req: UserRequestInterface, res: Response, targetUserId: string): boolean => {
+  if (!req.user?.id || !req.user?.role) {
+    res.status(401).json({ error: 'Authentication required' });
+    return false;
+  }
+  
+  if (!isAdmin(req.user.role) && req.user.id !== targetUserId) {
+    res.status(403).json({ error: 'Not authorized' });
+    return false;
+  }
+  
+  return true;
+};
+
+// Middleware for admin-only routes
+export const adminOnly = (req: UserRequestInterface, res: Response, next: NextFunction): void => {
+  if (!req.user?.role) {
+    res.status(401).json({ error: 'Authentication required' });
+    return;
+  }
+  
+  if (!isAdmin(req.user.role)) {
+    res.status(403).json({ error: 'Admin access required' });
+    return;
+  }
+  
+  next();
+};
+
+// Middleware for admin or self routes
+export const adminOrSelf = (req: UserRequestInterface, res: Response, next: NextFunction): void => {
+  if (!req.user?.id || !req.user?.role) {
+    res.status(401).json({ error: 'Authentication required' });
+    return;
+  }
+  
+  const targetUserId = req.params.userId;
+  if (!isAdmin(req.user.role) && req.user.id !== targetUserId) {
+    res.status(403).json({ error: 'Not authorized' });
+    return;
+  }
+  
+  next();
+};
 
 const authenticateJWT = async (req: UserRequestInterface, res: Response, next: NextFunction) => {
   const token = req.headers?.authorization?.split(' ')[1];

@@ -6,6 +6,8 @@ import constantsHelper from './utils/constants.helper';
 import { sequelize } from './config/connection';
 import authRoutes from './routes/auth.routes';
 import userRoutes from './routes/user.routes';
+import sessionRoutes from './routes/session.routes';
+import { startSessionCleanupJob } from './service/session.service';
 const { runSeeders } = require('../seeders/seeders');
 
 const { MAX_FILE_SIZE } = constantsHelper;
@@ -39,6 +41,7 @@ sequelize
     console.log("Continuing without database sync...");
   });
 
+startSessionCleanupJob();
 
 app.get('/api/health', async (req, res) => {
   const serverMsg = 'Server is up and running.';
@@ -57,6 +60,7 @@ app.get('/api/health', async (req, res) => {
 // Register routes
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api', sessionRoutes);
 
 app.use(errorMiddleware);
 

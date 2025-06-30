@@ -10,6 +10,7 @@ import { handleAuthSuccess } from "../../utils/loginHelper";
 import { useAuth } from "../../services/authProvider";
 import { useNavigate, useLocation } from "react-router-dom";
 import Logo from "../../components/Logo/Logo";
+import Button from "../../components/Button/Button";
 
 const validationSchema = Yup.object({
   email: Yup.string()
@@ -23,8 +24,8 @@ const validationSchema = Yup.object({
 });
 
 function LoginPage({ isAdmin = false }) {
-  const [rememberMe, setRememberMe] = useState(false);
   const [serverErrors, setServerErrors] = useState([]);
+  const [isPreconfiguredLoading, setIsPreconfiguredLoading] = useState(false);
   const { loginAuth } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -37,6 +38,30 @@ function LoginPage({ isAdmin = false }) {
       navigate("/signup");
     }
   }, [isAdmin]);
+
+  const handlePreconfiguredLogin = async () => {
+    setIsPreconfiguredLoading(true);
+    setServerErrors([]);
+    try {
+      const response = await login({
+        email: "member@gmail.com",
+        password: "MemberPassword123!"
+      });
+      handleAuthSuccess(response, loginAuth, navigate, redirectTo);
+    } catch (error) {
+      if (error.response?.data?.errors) {
+        setServerErrors(error.response.data.errors);
+      } else if (error.response?.data?.error) {
+        setServerErrors([error.response.data.error]);
+      } else {
+        setServerErrors([
+          "An error occurred. Please check your network connection and try again.",
+        ]);
+      }
+    } finally {
+      setIsPreconfiguredLoading(false);
+    }
+  };
 
   return (
     <Formik
@@ -123,31 +148,25 @@ function LoginPage({ isAdmin = false }) {
             )}
           </div>
 
-          <div className={styles["form-group"]}>
-            <div className={styles["form-group-2"]}>
-              <label>
-                <input
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                />
-                Remember for 30 days
-              </label>
-              <CustomLink text="Forgot Password" url="/forgot-password" />
-            </div>
-          </div>
-
-          <button
-            className={styles["sign-in-button"]}
+          <Button
+            text="Sign In"
+            onClick={() => {}}
+            buttonType="primary"
             type="submit"
+            loading={isSubmitting}
             disabled={isSubmitting}
-          >
-            {isSubmitting ? (
-              <CircularProgress size={12} color="inherit" />
-            ) : (
-              "Sign In"
-            )}
-          </button>
+            style={{ width: '100%', marginBottom: '15px', borderRadius: '8px', fontSize: '13px' }}
+          />
+
+          <Button
+            text="Sign in with a preconfigured account"
+            onClick={handlePreconfiguredLogin}
+            buttonType="secondary-purple"
+            type="button"
+            loading={isPreconfiguredLoading}
+            disabled={isPreconfiguredLoading}
+            style={{ width: '100%', marginBottom: '15px', borderRadius: '8px', fontSize: '13px' }}
+          />
 
           <div className={styles['sign-up-link']}>
             <div className={styles["create-account-link"]}>

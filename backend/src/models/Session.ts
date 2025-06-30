@@ -8,6 +8,7 @@ export enum SessionStatus {
   COMPLETED = 'completed',
   FAILED = 'failed',
   DESTROYED = 'destroyed',
+  TERMINATING = 'terminating',
 }
 
 export interface SessionAttributes {

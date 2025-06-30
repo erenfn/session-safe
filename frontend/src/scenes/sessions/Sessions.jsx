@@ -17,6 +17,7 @@ import PaginationTable from '../../components/Pagination/TablePagination/Paginat
 import PopUpMessages from '../../components/PopUpMessages/PopUpMessages';
 import { getAllSessions, terminateSession, terminateAllSessions } from '../../services/sessionServices';
 import toastEmitter, { TOAST_EMITTER_KEY } from '../../utils/toastEmitter';
+import { getStatusColor } from './helpers/statusColors';
 import styles from './Sessions.module.scss';
 
 const Sessions = () => {
@@ -116,7 +117,7 @@ const Sessions = () => {
                 <TrashIcon 
                   width="16" 
                   height="16" 
-                  stroke={isTerminatable ? 'var(--border-error-solid)' : 'var(--text-disabled)'}
+                  stroke={isTerminatable ? 'var(--border-error-solid)' : 'var(--second-text-color)'}
                 />
               </IconButton>
             </Box>
@@ -152,7 +153,7 @@ const Sessions = () => {
       <Box className={styles.header}>
         <span/> {/* Empty span for spacing */}
         <h1>
-          All Sessions ({sessions.length})
+          Admin Sessions ({sessions.length})
         </h1>
         <Box className={styles.headerActions}>
           <Tooltip title="Refresh sessions">
@@ -186,7 +187,9 @@ const Sessions = () => {
                 row.id,
                 row.username,
                 row.targetDomain,
-                row.status,
+                <span style={{ color: getStatusColor(row.status) }}>
+                  {row.status}
+                </span>,
                 row.createdAt,
                 row.actions
               ])}

@@ -22,10 +22,10 @@ export default function CustomTable({ fullData = [], headers = [], data = [] }) 
         : data;
 
     return (
-        <TableContainer component={Paper} elevation={0} >
+        <TableContainer component={Paper} elevation={0} sx={{ borderRadius: '12px', border: '1px solid #ddd' }}>
             <Table sx={{
                 minWidth: 650,
-                border: '1px solid #ddd',
+                overflow: 'hidden',
             }}>
                 <TableHead>
                     <TableRow className={styles.tableHeader}>

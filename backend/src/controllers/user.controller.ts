@@ -3,6 +3,7 @@ import { body, validationResult } from 'express-validator';
 import UserService from '../service/user.service';
 import { internalServerError } from '../utils/errors.helper';
 import { roleName } from '../enums/userRole.enum';
+import UserRequestInterface from '../interfaces/request.interface';
 
 const userService = new UserService();
 
@@ -14,12 +15,6 @@ interface UserQuery {
 
 interface UserBody {
   username?: string;
-}
-
-interface UserRequest extends Request {
-  user?: {
-    id: string;
-  };
 }
 
 const checkAtLeastOneField = (req: Request<{}, {}, UserBody>, res: Response, next: NextFunction): void => {
@@ -86,7 +81,7 @@ const getUsersList = async (req: Request<{}, {}, {}, UserQuery>, res: Response):
   }
 };
 
-const getCurrentUser = async (req: UserRequest, res: Response): Promise<void> => {
+const getCurrentUser = async (req: UserRequestInterface, res: Response): Promise<void> => {
   const userId = req.user?.id;
   if (!userId) {
     res.status(401).json({ error: 'User not authenticated' });
@@ -107,7 +102,7 @@ const getCurrentUser = async (req: UserRequest, res: Response): Promise<void> =>
   }
 };
 
-const updateUserDetails = async (req: UserRequest, res: Response): Promise<void> => {
+const updateUserDetails = async (req: UserRequestInterface, res: Response): Promise<void> => {
   const userId = req.user?.id;
   if (!userId) {
     res.status(401).json({ error: 'User not authenticated' });
@@ -125,7 +120,7 @@ const updateUserDetails = async (req: UserRequest, res: Response): Promise<void>
   }
 };
 
-const deleteUser = async (req: UserRequest, res: Response): Promise<void> => {
+const deleteUser = async (req: UserRequestInterface, res: Response): Promise<void> => {
   try {
     const userId = req.user?.id;
     if (!userId) {

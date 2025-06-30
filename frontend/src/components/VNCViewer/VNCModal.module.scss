@@ -1,0 +1,20 @@
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.iframe {
+  width: 90vw;
+  height: 90vh;
+  border: none;
+  border-radius: 8px;
+  background: #fff;
+} 

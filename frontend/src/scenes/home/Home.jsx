@@ -3,29 +3,36 @@ import { useAuth } from '../../services/authProvider';
 import { createSession } from '../../services/apiClient';
 import VNCModal from '../../components/VNCViewer/VNCModal';
 import Button from '../../components/Button/Button';
+import toastEmitter, { TOAST_EMITTER_KEY } from '../../utils/toastEmitter';
 import styles from './Home.module.scss';
 
 const Home = () => {
   const { userInfo } = useAuth();
   const [modalOpen, setModalOpen] = useState(false);
   const [novncUrl, setNovncUrl] = useState('');
+  const [sessionId, setSessionId] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
 
   const handleNewSession = async () => {
     setLoading(true);
-    setError('');
     try {
       const userId = userInfo.id;
-      const targetDomain = 'www.amazon.com'; // Only the domain part is used for cookie extraction
+      const targetDomain = 'amazon.com'; // Only the domain part is used for cookie extraction
       const res = await createSession({ userId, targetDomain });
-      setNovncUrl(`http://localhost:${res.novncPort}/vnc.html?autoconnect=true&url=https://www.amazon.com/fmc/pastpurchases/whole-foods-market`);
+      setNovncUrl(`http://localhost:${res.novncPort}/vnc.html?autoconnect=true`);
+      setSessionId(res.sessionId);
       setModalOpen(true);
     } catch (e) {
-      setError(e.message || 'Failed to create session');
+      toastEmitter.emit(TOAST_EMITTER_KEY, e.message || 'Failed to create session');
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleCloseModal = () => {
+    setModalOpen(false);
+    setSessionId(null);
+    setNovncUrl('');
   };
 
   return (
@@ -42,8 +49,12 @@ const Home = () => {
         buttonType="primary"
         style={{ width: '240px' }}
       />
-      {error && <div style={{ color: 'red', marginTop: 8 }}>{error}</div>}
-      <VNCModal open={modalOpen} onClose={() => setModalOpen(false)} novncUrl={novncUrl} />
+      <VNCModal 
+        open={modalOpen} 
+        onClose={handleCloseModal} 
+        novncUrl={novncUrl} 
+        sessionId={sessionId}
+      />
     </div>
   );
 };

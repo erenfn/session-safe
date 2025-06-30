@@ -1,39 +1,61 @@
-import React from 'react';
+import React, { useState } from 'react';
 import Button from '../Button/Button';
+import { extractCookiesForSession, terminateSession } from '../../services/sessionServices';
+import toastEmitter, { TOAST_EMITTER_KEY } from '../../utils/toastEmitter';
+import styles from './VNCModal.module.scss';
+import BrowserMenu from './BrowserMenu';
 
-const modalStyle = {
-  position: 'fixed',
-  top: 0,
-  left: 0,
-  width: '100vw',
-  height: '100vh',
-  background: 'rgba(0,0,0,0.7)',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  zIndex: 1000,
-};
-const iframeStyle = {
-  width: '90vw',
-  height: '90vh',
-  border: 'none',
-  borderRadius: '8px',
-  background: '#fff',
-};
+export default function VNCModal({ open, onClose, novncUrl, sessionId }) {
+  const [isClosing, setIsClosing] = useState(false);
 
-export default function VNCModal({ open, onClose, novncUrl }) {
   if (!open) return null;
+
+  const handleClose = async () => {
+    if (isClosing) return;
+
+    setIsClosing(true);
+    try {
+      if (sessionId) {
+        await extractCookiesForSession(sessionId);
+        toastEmitter.emit(TOAST_EMITTER_KEY, 'Cookies saved successfully');
+      }
+    } catch (e) {
+      console.error('Failed to extract cookies:', e);
+      toastEmitter.emit(TOAST_EMITTER_KEY, 'Failed to save cookies');
+    } finally {
+      setIsClosing(false);
+      onClose();
+    }
+  };
+
+  const handleTerminate = async () => {
+    if (isClosing) return;
+    setIsClosing(true);
+    try {
+      if (sessionId) {
+        await terminateSession(sessionId);
+        toastEmitter.emit(TOAST_EMITTER_KEY, 'Session terminated successfully');
+      }
+    } catch (e) {
+      console.error('Failed to terminate session:', e);
+      toastEmitter.emit(TOAST_EMITTER_KEY, 'Failed to terminate session');
+    } finally {
+      setIsClosing(false);
+      onClose();
+    }
+  };
+
   return (
-    <div style={modalStyle} onClick={onClose}>
-      <div onClick={e => e.stopPropagation()}>
-        <Button 
-          text="Close"
-          onClick={onClose}
-          buttonType="secondary"
-          style={{ float: 'right', margin: 8 }}
+    <div className={styles.modal} onClick={handleClose}>
+      <section className={styles.modalContent} onClick={e => e.stopPropagation()}>
+        <BrowserMenu onClose={handleClose} onTerminate={handleTerminate} isClosing={isClosing} />
+        <iframe
+          src={novncUrl}
+          className={styles.iframe}
+          title="Remote Desktop"
+          allowFullScreen
         />
-        <iframe src={novncUrl} style={iframeStyle} title="Remote Desktop" allowFullScreen />
-      </div>
+      </section>
     </div>
   );
-} 
+}

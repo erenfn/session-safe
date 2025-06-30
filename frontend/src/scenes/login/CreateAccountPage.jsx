@@ -12,6 +12,7 @@ import { useNavigate } from 'react-router-dom';
 import * as Yup from 'yup';
 import { Form, Formik } from 'formik';
 import Logo from '../../components/Logo/Logo';
+import Button from '../../components/Button/Button';
 
 function CreateAccountPage({ isAdmin = false, setIsAdmin }) {
   const { loginAuth } = useAuth();
@@ -209,17 +210,15 @@ function CreateAccountPage({ isAdmin = false, setIsAdmin }) {
             </div>
           )}
 
-          <button
-            className={styles['create-account-button']}
+          <Button
+            text="Get started"
+            onClick={() => {}}
+            buttonType="primary"
             type="submit"
+            loading={isSubmitting}
             disabled={isSubmitting}
-          >
-            {isSubmitting ? (
-              <CircularProgress size={12} color="inherit" />
-            ) : (
-              'Get started'
-            )}
-          </button>
+            style={{ width: '100%', marginTop: '6px', marginBottom: '12px', borderRadius: '8px', fontSize: '13px' }}
+          />
           <div className={styles['sign-up-link']}>
             Already have an account? <CustomLink text="Log in" url="/login" />
           </div>

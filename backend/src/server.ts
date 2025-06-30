@@ -7,8 +7,8 @@ import { sequelize } from './config/connection';
 import authRoutes from './routes/auth.routes';
 import userRoutes from './routes/user.routes';
 import sessionRoutes from './routes/session.routes';
-import { startSessionCleanupJob } from './service/session.service';
-const { runSeeders } = require('../seeders/seeders');
+import { startSessionCleanupJob } from './controllers/session.controller';
+import { runSeeders } from '../seeders/seeders';
 
 const { MAX_FILE_SIZE } = constantsHelper;
 

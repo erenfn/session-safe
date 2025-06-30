@@ -4,18 +4,22 @@ import sqlite3
 import base64
 import json
 import requests
+import argparse
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import padding
 
 # Updated path for Google Chrome
 CHROME_COOKIE_DB = os.path.expanduser('~/.config/google-chrome/Default/Cookies')
-TARGET_DOMAIN = os.environ.get('TARGET_DOMAIN')
-SESSION_ID = os.environ.get('SESSION_ID')
-BACKEND_URL = os.environ.get('BACKEND_URL', 'http://host.docker.internal:3000')
-ENCRYPTION_KEY = os.environ.get('COOKIE_ENCRYPTION_KEY', 'this_is_a_32byte_key_123456789012')
+ENCRYPTION_KEY = os.environ.get('COOKIE_ENCRYPTION_KEY', 'this_is_a_32byte_key_12345678901')
 
-assert TARGET_DOMAIN and SESSION_ID, 'TARGET_DOMAIN and SESSION_ID env vars required'
+def parse_arguments():
+    parser = argparse.ArgumentParser(description='Extract cookies from Chrome for a specific domain')
+    parser.add_argument('--target-domain', required=True, help='Target domain to extract cookies for')
+    parser.add_argument('--session-id', required=True, help='Session ID for posting cookies')
+    parser.add_argument('--backend-url', default='http://host.docker.internal:3000', 
+                       help='Backend URL for posting cookies (default: http://host.docker.internal:3000)')
+    return parser.parse_args()
 
 # Pad key to 32 bytes
 key = ENCRYPTION_KEY.encode('utf-8')[:32].ljust(32, b'0')
@@ -31,13 +35,13 @@ def encrypt_data(data: bytes) -> str:
     return base64.b64encode(iv + ct).decode('utf-8')
 
 
-def extract_cookies():
+def extract_cookies(target_domain):
     if not os.path.exists(CHROME_COOKIE_DB):
         return None
     try:
         conn = sqlite3.connect(CHROME_COOKIE_DB)
         cursor = conn.cursor()
-        cursor.execute("SELECT name, value, host_key, path, expires_utc, is_secure, is_httponly FROM cookies WHERE host_key LIKE ?", (f"%{TARGET_DOMAIN}",))
+        cursor.execute("SELECT name, value, host_key, path, expires_utc, is_secure, is_httponly FROM cookies WHERE host_key LIKE ?", (f"%{target_domain}",))
         cookies = [
             {
                 'name': row[0],
@@ -57,8 +61,8 @@ def extract_cookies():
         return None
 
 
-def post_cookies(encrypted_cookies):
-    url = f"{BACKEND_URL}/api/session/{SESSION_ID}/cookies"
+def post_cookies(encrypted_cookies, backend_url, session_id):
+    url = f"{backend_url}/api/session/{session_id}/cookies"
     try:
         resp = requests.post(url, json={'encryptedCookies': encrypted_cookies})
         print(f"POST {url} status: {resp.status_code}")
@@ -68,19 +72,28 @@ def post_cookies(encrypted_cookies):
         return False
 
 
-def main():
-    print(f"Waiting for cookies for domain: {TARGET_DOMAIN}")
-    for _ in range(60 * 10):  # Wait up to 10 minutes
-        cookies = extract_cookies()
+def main(target_domain, backend_url, session_id):
+    """
+    Main function to extract cookies and post them to the backend.
+    Polls for cookies for up to 5 minutes.
+    """
+    timeout_seconds = 300  # 5 minutes
+    check_interval_seconds = 10
+    start_time = time.time()
+
+    while time.time() - start_time < timeout_seconds:
+        cookies = extract_cookies(target_domain)
         if cookies:
             print(f"Found cookies: {cookies}")
             data = json.dumps(cookies).encode('utf-8')
             encrypted = encrypt_data(data)
-            if post_cookies(encrypted):
+            if post_cookies(encrypted, backend_url, session_id):
                 print("Cookies sent successfully. Exiting.")
                 return
-        time.sleep(10)
-    print("Timeout: No cookies found.")
+        time.sleep(check_interval_seconds)
+    
+    print("Timeout: No cookies found after 10 minutes.")
 
 if __name__ == '__main__':
-    main() 
+    args = parse_arguments()
+    main(args.target_domain, args.backend_url, args.session_id) 

@@ -80,6 +80,18 @@ export const lightTheme = createTheme({
   },
   typography: {
     fontFamily: 'Inter',
+    body1: {
+      fontSize: '14px',
+      lineHeight: '16px',
+      fontWeight: 500,
+      color: 'var(--main-text-color)',
+    },
+    body2: {
+      fontSize: '13px',
+      lineHeight: '16px',
+      fontWeight: 400,
+      color: 'var(--main-text-color)',
+    },
   },
 });
 

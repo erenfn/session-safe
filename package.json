@@ -12,8 +12,5 @@
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
-  "dependencies": {
-    "dockerode": "^4.0.7"
-  }
+  "license": "ISC"
 }

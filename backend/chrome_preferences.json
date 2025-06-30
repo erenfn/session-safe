@@ -37,10 +37,5 @@
     "enabled": true,
     "search_url": "https://www.google.com/search?q={searchTerms}"
   },
-  "first_run_complete": true,
-  "browser": {
-    "show_home_button": false,
-    "check_default_browser": false,
-    "should_reset_check_default_browser": false
-  }
+  "first_run_complete": true
 } 

@@ -40,22 +40,30 @@ export const createSession = async (sessionData) => {
   }
 };
 
-// Store session cookies
-export const storeSessionCookies = async (sessionId, encryptedCookies) => {
+// Get session cookies
+export const getSessionCookies = async (sessionId) => {
   try {
-    const response = await apiClient.post(`/session/${sessionId}/cookies`, {
-      encryptedCookies
-    });
+    const response = await apiClient.get(`/session/${sessionId}/cookies`);
     return response.data;
   } catch (error) {
     throw error;
   }
 };
 
-// Get session cookies
-export const getSessionCookies = async (sessionId) => {
+// Get current user's sessions
+export const getCurrentUserSessions = async () => {
   try {
-    const response = await apiClient.get(`/session/${sessionId}/cookies`);
+    const response = await apiClient.get('/session/my-sessions');
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+// Trigger cookie extraction for a session
+export const extractCookiesForSession = async (sessionId) => {
+  try {
+    const response = await apiClient.post(`/session/${sessionId}/extract-cookies`);
     return response.data;
   } catch (error) {
     throw error;

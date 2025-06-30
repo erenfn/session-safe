@@ -2,12 +2,11 @@ import { Routes, Route } from 'react-router-dom';
 import Home from './scenes/home/Home';
 import LoginPage from './scenes/login/LoginPage';
 import CreateAccountPage from './scenes/login/CreateAccountPage';
-import PasswordResetPage from './scenes/login/PassswordResetPage';
-import ForgotPasswordPage from './scenes/login/ForgotPasswordPage';
-import CheckYourEmailPage from './scenes/login/CheckYourEmailPage';
-import SetNewPasswordPage from './scenes/login/SetNewPassword';
 import Sessions from './scenes/sessions/Sessions';
+import MySessions from './scenes/sessions/MySessions';
+import Logs from './scenes/logs/Logs';
 import Private from '@components/Private';
+import AdminRoute from '@components/AdminRoute/AdminRoute';
 import HomePageTemplate from './templates/HomePageTemplate';
 
 import { Error404 } from './scenes/errors/404';
@@ -22,7 +21,12 @@ const App = () => {
     <Routes>
       <Route path="/" element={<Private Component={HomePageTemplate} />}>
         <Route index element={<Home />} />
-        <Route path="sessions" element={<Sessions />} />
+        <Route path="sessions" element={<AdminRoute Component={Sessions} />} />
+        <Route path="my-sessions" element={<MySessions />} />
+        <Route 
+          path="logs" 
+          element={<AdminRoute Component={Logs} />} 
+        />
       </Route>
 
       <Route path="/login" element={<LoginPage isAdmin={isAdminLogin} />} />
@@ -35,10 +39,6 @@ const App = () => {
           />
         }
       />
-      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-      <Route path="/reset-password" element={<PasswordResetPage />} />
-      <Route path="/check-email" element={<CheckYourEmailPage />} />
-      <Route path="/set-new-password" element={<SetNewPasswordPage />} />
 
       <Route path="/403" element={<Error403 />} />
       <Route path="*" element={<Error404 />} />

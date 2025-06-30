@@ -9,18 +9,24 @@ import {
   HomeOutlined as HomeIcon,
   ListAlt as SessionsIcon,
 } from '@mui/icons-material';
-import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
+import AssessmentOutlinedIcon from '@mui/icons-material/AssessmentOutlined';
 import styles from './LeftMenu.module.css';
 import Logo from '../Logo/Logo';
 import { useNavigate, useLocation } from 'react-router-dom';
 import UserProfileSidebar from '../UserProfileSidebar/UserProfileSidebar';
 import { useAuth } from '../../services/authProvider';
+import { renderIfAuthorized } from '../../utils/generalHelper';
 
 const menuItems = [
   {
     text: 'Home',
     icon: <HomeIcon style={{ color: 'var(--menu-icon-color)' }} />,
     route: '/',
+  },
+  {
+    text: 'My Sessions',
+    icon: <SessionsIcon style={{ color: 'var(--menu-icon-color)' }} />,
+    route: '/my-sessions',
   },
 ];
 
@@ -31,19 +37,17 @@ function LeftMenu() {
 
   const adminMenuItems = [
     ...menuItems,
-    ...(userInfo?.role === 'admin' ? [
-      {
-        text: 'Sessions',
-        icon: <SessionsIcon style={{ color: 'var(--menu-icon-color)' }} />,
-        route: '/sessions',
-      },
-      {
-        text: 'Settings',
-        icon: <SettingsOutlinedIcon style={{ color: 'var(--menu-icon-color)' }} />,
-        route: '/settings',
-      }
-    ] : [])
-  ];
+    renderIfAuthorized(userInfo?.role, 'admin', {
+      text: 'Admin Sessions',
+      icon: <SessionsIcon style={{ color: 'var(--menu-icon-color)' }} />,
+      route: '/sessions',
+    }),
+    renderIfAuthorized(userInfo?.role, 'admin', {
+      text: 'Logs',
+      icon: <AssessmentOutlinedIcon style={{ color: 'var(--menu-icon-color)' }} />,
+      route: '/logs',
+    })
+  ].filter(Boolean); // Remove null values
 
   const handleNavigation = (route) => {
     if (route && route.startsWith('/')) {

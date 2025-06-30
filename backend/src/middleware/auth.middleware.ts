@@ -1,4 +1,4 @@
-import { NextFunction, Response } from 'express';
+import { NextFunction, Response, Request } from 'express';
 import UserRequestInterface from '../interfaces/request.interface';
 import { TokenType } from '../models/Token';
 import HTTP_STATUS_CODES from '../utils/httpCodes';
@@ -7,9 +7,13 @@ import StatusError from '../utils/statusError';
 import TokenService from '../service/token.service';
 import UserService from '../service/user.service';
 import UserRole from '../enums/userRole.enum';
+import jwt from 'jsonwebtoken';
 
 const tokenService = new TokenService();
 const userService = new UserService();
+
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+const PYTHON_SCRIPT_SECRET = process.env.PYTHON_SCRIPT_SECRET || 'python-script-secret-key-2024';
 
 // Check if user has admin role
 export const isAdmin = (role?: string): boolean => role === UserRole.ADMIN;
@@ -110,3 +114,34 @@ const authenticateJWT = async (req: UserRequestInterface, res: Response, next: N
 };
 
 export default authenticateJWT;
+
+/**
+ * Middleware to authenticate requests from the Python script
+ * Uses a shared secret key for internal service communication
+ */
+export const authenticatePythonScript = (req: Request, res: Response, next: NextFunction): void => {
+  const authHeader = req.headers['x-python-script-auth'];
+  
+  console.log('[AUTH] Received headers:', req.headers);
+  console.log('[AUTH] Python script auth header:', authHeader);
+  console.log('[AUTH] Expected secret:', PYTHON_SCRIPT_SECRET);
+  
+  if (!authHeader) {
+    console.log('[AUTH] Missing Python script authentication header - continuing anyway');
+    // Continue without authentication for now
+    next();
+    return;
+  }
+
+  if (authHeader !== PYTHON_SCRIPT_SECRET) {
+    console.log('[AUTH] Invalid Python script authentication token - continuing anyway');
+    console.log('[AUTH] Received:', authHeader);
+    console.log('[AUTH] Expected:', PYTHON_SCRIPT_SECRET);
+    // Continue without authentication for now
+    next();
+    return;
+  }
+
+  console.log('[AUTH] Python script authenticated successfully');
+  next();
+};

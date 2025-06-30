@@ -6,6 +6,8 @@ import { TokenType } from '../models/Token';
 import UserService from '../service/user.service';
 import TokenService from '../service/token.service';
 import UserRequestInterface from '../interfaces/request.interface';
+import StatusError from '../utils/statusError';
+import HTTP_STATUS_CODES from '../utils/httpCodes';
 
 const userService = new UserService();
 const tokenService = new TokenService();
@@ -21,18 +23,13 @@ interface LoginRequest {
   password: string;
 }
 
-interface ResetPasswordRequest {
-  token: string;
-  newPassword: string;
-}
 
 const register = async (req: Request<{}, {}, RegisterRequest>, res: Response): Promise<void> => {
   try {
     const { username, email, password } = req.body;
     const existingUser = await userService.getUserByEmail(email);
     if (existingUser) {
-      res.status(400).json({ error: 'Email already exists' });
-      return;
+      throw new StatusError('Email already exists', HTTP_STATUS_CODES.BAD_REQUEST);
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -63,7 +60,11 @@ const register = async (req: Request<{}, {}, RegisterRequest>, res: Response): P
     });
   } catch (error) {
     console.error('Error registering user:', error);
-    res.status(500).json({ error: 'Internal Server Error' });
+    if (error instanceof StatusError) {
+      res.status(error.statusCode).json({ error: error.message });
+    } else {
+      res.status(HTTP_STATUS_CODES.INTERNAL_SERVER_ERROR).json({ error: 'Internal Server Error' });
+    }
   }
 };
 
@@ -72,8 +73,7 @@ const login = async (req: Request<{}, {}, LoginRequest>, res: Response): Promise
     const { email, password } = req.body;
     const user = await userService.getUserByEmail(email);
     if (!user || !(await bcrypt.compare(password, user.password))) {
-      res.status(401).json({ error: 'Invalid credentials' });
-      return;
+      throw new StatusError('Invalid credentials', HTTP_STATUS_CODES.UNAUTHORIZED);
     }
 
     await tokenService.deleteTokenByUserAndType(user.id, TokenType.AUTH);
@@ -92,7 +92,11 @@ const login = async (req: Request<{}, {}, LoginRequest>, res: Response): Promise
     });
   } catch (error) {
     console.error('Error logging in user:', error);
-    res.status(500).json({ error: 'Internal Server Error' });
+    if (error instanceof StatusError) {
+      res.status(error.statusCode).json({ error: error.message });
+    } else {
+      res.status(HTTP_STATUS_CODES.INTERNAL_SERVER_ERROR).json({ error: 'Internal Server Error' });
+    }
   }
 };
 
@@ -100,101 +104,36 @@ const logout = async (req: Request, res: Response): Promise<void> => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
     if (!token) {
-      res.status(401).json({ error: 'No token provided' });
-      return;
+      throw new StatusError('No token provided', HTTP_STATUS_CODES.UNAUTHORIZED);
     }
     
     const decoded = verifyToken(token);
 
     if (!decoded) {
-      res.status(401).json({ error: 'Invalid token' });
-      return;
+      throw new StatusError('Invalid token', HTTP_STATUS_CODES.UNAUTHORIZED);
     }
 
     const dbToken = await tokenService.findTokenByTokenAndUser(token, parseInt(decoded.id), TokenType.AUTH);
     if (!dbToken) {
-      res.status(401).json({ error: 'Invalid token' });
-      return;
+      throw new StatusError('Invalid token', HTTP_STATUS_CODES.UNAUTHORIZED);
     }
 
     await tokenService.deleteTokenById(dbToken.id);
     res.status(200).json({ message: 'Successfully logged out' });
   } catch (error) {
     console.error('Error logging out user:', error);
-    res.status(500).json({ error: 'Internal Server Error' });
-  }
-};
-
-const resetPassword = async (req: Request<{}, {}, ResetPasswordRequest>, res: Response): Promise<void> => {
-  try {
-    const { token, newPassword } = req.body;
-    const dbToken = await tokenService.findTokenByToken(token, TokenType.RESET);
-
-    if (!dbToken) {
-      res.status(400).json({ error: 'Invalid token' });
-      return;
+    if (error instanceof StatusError) {
+      res.status(error.statusCode).json({ error: error.message });
+    } else {
+      res.status(HTTP_STATUS_CODES.INTERNAL_SERVER_ERROR).json({ error: 'Internal Server Error' });
     }
-
-    // Check if token is expired
-    if (dbToken.expiresAt && new Date() > dbToken.expiresAt) {
-      await tokenService.deleteTokenById(dbToken.id);
-      res.status(400).json({ error: 'Token expired' });
-      return;
-    }
-
-    const user = await userService.getUser(dbToken.userId);
-    if (!user) {
-      res.status(400).json({ error: 'User not found' });
-      return;
-    }
-    
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
-    await userService.updateUserPassword(user.id, hashedPassword);
-    await tokenService.deleteTokenById(dbToken.id);
-
-    res.status(200).json({ message: 'Password reset successful' });
-  } catch (error) {
-    console.error('Error resetting password:', error);
-    res.status(500).json({ error: 'Internal Server Error' });
-  }
-};
-
-const forgetPassword = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { email } = req.body;
-    const user = await userService.getUserByEmail(email);
-    
-    if (!user) {
-      res.status(404).json({ error: 'User not found' });
-      return;
-    }
-
-    // Generate reset token
-    const resetToken = generateToken({ id: user.id, email: user.email });
-    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
-
-    await tokenService.createToken({ 
-      token: resetToken, 
-      userId: user.id, 
-      type: TokenType.RESET,
-      expiresAt 
-    });
-
-    // In a real application, you would send this token via email
-    res.status(200).json({ 
-      message: 'Password reset token generated',
-      token: resetToken // Remove this in production
-    });
-  } catch (error) {
-    console.error('Error generating reset token:', error);
-    res.status(500).json({ error: 'Internal Server Error' });
   }
 };
 
 const getCurrentUser = async (req: UserRequestInterface, res: Response): Promise<void> => {
   const userId = req.user?.id;
   if (!userId) {
-    res.status(401).json({ error: 'User not authenticated' });
+    res.status(HTTP_STATUS_CODES.UNAUTHORIZED).json({ error: 'User not authenticated' });
     return;
   }
   
@@ -211,11 +150,15 @@ const getCurrentUser = async (req: UserRequestInterface, res: Response): Promise
         } 
       });
     } else {
-      res.status(400).json({ error: 'User not found' });
+      throw new StatusError('User not found', HTTP_STATUS_CODES.BAD_REQUEST);
     }
   } catch (err: any) {
     console.error('Error getting current user:', err);
-    res.status(500).json({ error: 'Internal Server Error' });
+    if (err instanceof StatusError) {
+      res.status(err.statusCode).json({ error: err.message });
+    } else {
+      res.status(HTTP_STATUS_CODES.INTERNAL_SERVER_ERROR).json({ error: 'Internal Server Error' });
+    }
   }
 };
 
@@ -223,7 +166,5 @@ export {
   register,
   login,
   logout,
-  resetPassword,
-  forgetPassword,
   getCurrentUser,
 }; 

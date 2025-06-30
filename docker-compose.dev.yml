@@ -16,6 +16,8 @@ services:
       - POSTGRES_PORT=${POSTGRES_PORT:-5432}
       - NODE_ENV=${NODE_ENV:-development}
       - JWT_SECRET=${JWT_SECRET}
+      - PYTHON_SCRIPT_SECRET=${PYTHON_SCRIPT_SECRET:-python-script-secret-key-2024}
+      - COOKIE_ENCRYPTION_KEY=${COOKIE_ENCRYPTION_KEY:-this_is_a_32byte_key_12345678901}
     ports:
       - "3000:3000"
     depends_on:

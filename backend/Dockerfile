@@ -11,6 +11,12 @@ RUN npm install
 
 COPY . .
 
-EXPOSE 3000
+# Build browser-session image if in production environment
+RUN if [ "$NODE_ENV" = "production" ]; then \
+        echo "Building browser-session image for production..." && \
+        docker build -f browser-session.Dockerfile -t browser-session . ; \
+    else \
+        echo "Skipping browser-session build for non-production environment" ; \
+    fi
 
-# CMD if [ "$$NODE_ENV" = "production" ] ; then npm run prod ; elif [ "$$NODE_ENV" = "staging" ] ; then npm run staging ; else npm run dev ; fi
+EXPOSE 3000

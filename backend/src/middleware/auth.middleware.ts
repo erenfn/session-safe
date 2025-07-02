@@ -121,27 +121,23 @@ export default authenticateJWT;
  */
 export const authenticatePythonScript = (req: Request, res: Response, next: NextFunction): void => {
   const authHeader = req.headers['x-python-script-auth'];
-  
-  console.log('[AUTH] Received headers:', req.headers);
-  console.log('[AUTH] Python script auth header:', authHeader);
-  console.log('[AUTH] Expected secret:', PYTHON_SCRIPT_SECRET);
-  
+
   if (!authHeader) {
-    console.log('[AUTH] Missing Python script authentication header - continuing anyway');
-    // Continue without authentication for now
-    next();
+    console.log('[AUTH] Missing Python script authentication header');
+    res.status(401).json({ error: 'Python script authentication required' });
     return;
   }
 
   if (authHeader !== PYTHON_SCRIPT_SECRET) {
-    console.log('[AUTH] Invalid Python script authentication token - continuing anyway');
+    console.log('[AUTH] Invalid Python script authentication token');
     console.log('[AUTH] Received:', authHeader);
     console.log('[AUTH] Expected:', PYTHON_SCRIPT_SECRET);
-    // Continue without authentication for now
-    next();
+    res.status(403).json({ error: 'Invalid Python script authentication token' });
     return;
   }
 
+  // Optionally set req.user to a special value for downstream logic
+  (req as any).user = { id: 'python-script', role: 'python-script' };
   console.log('[AUTH] Python script authenticated successfully');
   next();
 };

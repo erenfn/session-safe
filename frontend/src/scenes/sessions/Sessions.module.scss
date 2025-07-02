@@ -24,20 +24,6 @@
   gap: 8px;
 }
 
-.tableContainer {
-  // box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  // border-radius: 8px;
-}
-
-.loadingContainer {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 400px;
-  color: var(--text-secondary);
-}
-
 .loadingOverlay {
   position: absolute;
   top: 0;

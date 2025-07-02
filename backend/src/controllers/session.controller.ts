@@ -1,6 +1,10 @@
 import { Response, RequestHandler } from 'express';
 import UserRequestInterface from '../interfaces/request.interface';
 import { SessionService } from '../service/session.service';
+import { requireAdmin } from '../middleware/auth.middleware';
+import StatusError from '../utils/statusError';
+import * as fs from 'fs';
+import * as path from 'path';
 
 // POST /session
 export const createSession: RequestHandler = async (req: UserRequestInterface, res: Response) => {
@@ -14,17 +18,28 @@ export const createSession: RequestHandler = async (req: UserRequestInterface, r
   }
 
   try {
+    const hasActiveSession = await SessionService.hasActiveSession(userId);
+    if (hasActiveSession) {
+      const activeSessionInfo = await SessionService.getActiveSessionInfo(userId);
+      const errorResponse: any = {
+        error: 'User already has an active session. Please terminate it before creating a new one.',
+        activeSession: activeSessionInfo
+      };
+
+      res.status(409).json(errorResponse);
+      return;
+    }
+
     const response = await SessionService.createSession(userId, targetDomain);
     console.log('[SESSION] Sending success response:', response);
     res.status(201).json(response);
   } catch (error: any) {
     console.error('[SESSION] Error creating session:', error);
-    console.error('[SESSION] Error stack:', error.stack);
-    console.error('[SESSION] Error details:', {
-      name: error.name,
-      message: error.message,
-      code: error.code,
-    });
+    
+    if (error instanceof StatusError) {
+      res.status(error.statusCode).json({ error: error.message });
+      return;
+    }
     
     let errorMessage = 'Failed to create session';
     if (error.code === 'ENOENT') {
@@ -237,6 +252,28 @@ export const extractCookiesForSession: RequestHandler = async (req: UserRequestI
   }
 };
 
+export const getActiveSession: RequestHandler = async (req: UserRequestInterface, res: Response) => {
+  const userId = req.user?.id;
+
+  try {
+    const activeSession = await SessionService.getActiveSession(Number(userId));
+    res.status(200).json({ success: true, activeSession });
+  } catch (error: any) {
+    res.status(500).json({ error: 'Failed to fetch active session', details: error.message });
+  }
+};
+
+export const terminateMyActiveSession: RequestHandler = async (req: UserRequestInterface, res: Response) => {
+  const userId = req.user?.id;
+
+  try {
+    await SessionService.terminateUserSessions(Number(userId));
+    res.status(200).json({ success: true, message: 'Your active session has been terminated.' });
+  } catch (error: any) {
+    res.status(500).json({ error: 'Failed to terminate session', details: error.message });
+  }
+};
+
 /**
  * Start the session cleanup job
  */
@@ -247,4 +284,67 @@ export function startSessionCleanupJob(): void {
       console.error('[SESSION_CONTROLLER] Error in cleanup job:', error);
     });
   }, 60 * 1000); // Run every minute
-} 
+}
+
+/**
+ * GET /api/sessions/logs (SSE)
+ * Only accessible by admin
+ * Streams new log lines as they are written (tail -f behavior)
+ */
+export const getSessionServiceLogs = (req: UserRequestInterface, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+
+  const LOG_FILE_PATH = path.resolve(__dirname, '../../data/session-service.log');
+  const lastNLines = parseInt(req.query.lastNLines as string) || 50;
+
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders();
+
+  // Send keep-alive comment every 30 seconds
+  const keepAliveInterval = setInterval(() => {
+    res.write(':\n\n');
+  }, 30000);
+
+  // Send last N lines on connect
+  let fileSize = 0;
+  if (fs.existsSync(LOG_FILE_PATH)) {
+    const logs = fs.readFileSync(LOG_FILE_PATH, 'utf8').split(/\r?\n/);
+    // Slice more lines initially to account for empty lines and keep-alive messages
+    const lastLines = logs.slice(-lastNLines * 2).filter(line => 
+      line.trim() !== '' && !line.startsWith(':')
+    ).slice(-lastNLines);
+    lastLines.forEach(line => {
+      res.write(`data: ${line}\n\n`);
+    });
+    fileSize = fs.statSync(LOG_FILE_PATH).size;
+  }
+
+  let lastSize = fileSize;
+  fs.watchFile(LOG_FILE_PATH, { interval: 1000 }, (curr, prev) => {
+    if (curr.size > lastSize) {
+      const stream = fs.createReadStream(LOG_FILE_PATH, {
+        start: lastSize,
+        end: curr.size,
+        encoding: 'utf8',
+      });
+      stream.on('data', (chunk) => {
+        const strChunk = chunk.toString();
+        strChunk.split(/\r?\n/).forEach((line: string) => {
+          if (line.trim() !== '') {
+            res.write(`data: ${line}\n\n`);
+          }
+        });
+      });
+      lastSize = curr.size;
+    }
+  });
+
+  // Clean up on client disconnect
+  req.on('close', () => {
+    fs.unwatchFile(LOG_FILE_PATH);
+    clearInterval(keepAliveInterval);
+    res.end();
+  });
+}; 

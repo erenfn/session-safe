@@ -1,6 +1,7 @@
 import { Session, SessionStatus, User } from '../models';
 import { DockerService } from './docker.service';
 import { decryptCookies } from '../utils/crypto.helper';
+import { Logger } from '../utils/logger.helper';
 
 export class SessionService {
   private static SESSION_TIMEOUT_MINUTES = 8;
@@ -10,7 +11,10 @@ export class SessionService {
    */
   private static async requireSession(sessionId: number): Promise<any> {
     const session = await Session.findByPk(sessionId);
-    if (!session) throw new Error('Session not found');
+    if (!session) {
+      Logger.error('[SESSION_SERVICE] Session not found for sessionId:', sessionId);
+      throw new Error('Session not found');
+    }
     return session;
   }
 
@@ -19,7 +23,10 @@ export class SessionService {
    */
   private static async requireSessionWithContainer(sessionId: number): Promise<any> {
     const session = await Session.findByPk(sessionId);
-    if (!session || !session.containerId) throw new Error('Session or container not found');
+    if (!session || !session.containerId) {
+      Logger.error('[SESSION_SERVICE] Session or container not found for sessionId:', sessionId);
+      throw new Error('Session or container not found');
+    }
     return session;
   }
 
@@ -29,7 +36,7 @@ export class SessionService {
   private static async updateSessionStatus(session: any, status: SessionStatus): Promise<void> {
     session.status = status;
     await session.save();
-    console.log(`[SESSION_SERVICE] Session ${session.id} status updated to: ${status}`);
+    Logger.info(`[SESSION_SERVICE] Session ${session.id} status updated to: ${status}`);
   }
 
   /**
@@ -40,7 +47,7 @@ export class SessionService {
       try {
         await DockerService.terminateContainer(session.containerId);
       } catch (e: any) {
-        console.error(`[SESSION_SERVICE] Error terminating container ${session.containerId}:`, e);
+        Logger.error(`[SESSION_SERVICE] Error terminating container ${session.containerId}:`, e);
         // Continue with status update even if container termination fails
       }
     }
@@ -55,7 +62,7 @@ export class SessionService {
     if (userId) {
       whereClause.userId = userId;
     }
-    
+
     return await Session.findAll({ where: whereClause });
   }
 
@@ -65,6 +72,58 @@ export class SessionService {
   static async checkSessionOwnership(sessionId: number, userId: number): Promise<boolean> {
     const session = await this.requireSession(sessionId);
     return session.userId === userId;
+  }
+
+  static async hasActiveSession(userId: number): Promise<boolean> {
+    const activeSessions = await this.findSessionsByStatus([SessionStatus.PENDING, SessionStatus.ACTIVE], userId);
+    return activeSessions.length > 0;
+  }
+
+  static async getActiveSessionInfo(userId: number): Promise<{ sessionId: number; novncUrl: string | null } | null> {
+    const activeSessions = await this.findSessionsByStatus([SessionStatus.PENDING, SessionStatus.ACTIVE], userId);
+
+    if (activeSessions.length === 0) {
+      return null;
+    }
+
+    const session = activeSessions[0];
+    
+    // If no containerId, return basic session info
+    if (!session.containerId) {
+      return {
+        sessionId: session.id,
+        novncUrl: null, // Indicate that the session exists but container is missing
+      };
+    }
+
+    try {
+      const ports = await DockerService.getContainerPorts(session.containerId);
+      
+      if (!ports.novncPort) {
+        // Return session info even if port is missing
+        Logger.info(`[SESSION_SERVICE] No noVNC port found for session ${session.id}`);
+        return {
+          sessionId: session.id,
+          novncUrl: null, // Indicate that the session exists but port is missing
+        };
+      }
+
+      const backendHost = process.env.BACKEND_HOST || 'localhost';
+      const vncPassword = process.env.VNC_PASSWORD || 'password';
+      const novncUrl = `http://${backendHost}:${ports.novncPort}/vnc.html?autoconnect=true&password=${vncPassword}`;
+      
+      return {
+        sessionId: session.id,
+        novncUrl: novncUrl,
+      };
+    } catch (error) {
+      Logger.error(`[SESSION_SERVICE] Error getting active session details for session ${session.id}:`, error);
+      // Return session info even if there's an error getting ports
+      return {
+        sessionId: session.id,
+        novncUrl: null, // Indicate that the session exists but there was an error
+      };
+    }
   }
 
   /**
@@ -77,40 +136,34 @@ export class SessionService {
     containerId: string;
     novncUrl: string;
   }> {
-    console.log('[SESSION_SERVICE] Creating session for userId:', userId, 'targetDomain:', targetDomain);
-    
     const imageExists = await DockerService.checkImageExists('browser-session');
-    
+
     if (!imageExists) {
-      console.log('[SESSION_SERVICE] Image not found');
+      Logger.error('[SESSION_SERVICE] Image not found');
       throw new Error('browser-session Docker image not found. Please build it first using: docker build -f backend/browser-session.Dockerfile -t browser-session backend/');
     }
 
-    console.log('[SESSION_SERVICE] Creating database session entry...');
     const session = await Session.create({
       userId,
       targetDomain,
       status: SessionStatus.PENDING,
     });
-    console.log('[SESSION_SERVICE] Database session created with ID:', session.id);
+    Logger.info('[SESSION_SERVICE] Database session created with ID:', session.id, 'for userId:', userId);
 
-    console.log('[SESSION_SERVICE] Creating Docker container...');
     const containerInfo = await DockerService.createBrowserSessionContainer();
-    console.log('[SESSION_SERVICE] Container created successfully');
 
-    console.log('[SESSION_SERVICE] Updating session with container info...');
     session.containerId = containerInfo.containerId;
     await this.updateSessionStatus(session, SessionStatus.ACTIVE);
-    console.log('[SESSION_SERVICE] Session updated successfully');
 
+    const backendHost = process.env.BACKEND_HOST || 'localhost';
     const response = {
       sessionId: session.id,
       vncPort: containerInfo.vncPort,
       novncPort: containerInfo.novncPort,
       containerId: containerInfo.containerId,
-      novncUrl: `/vnc.html?host=localhost&port=${containerInfo.novncPort}`,
+      novncUrl: `http://${backendHost}:${containerInfo.novncPort}/vnc.html?autoconnect=true&password=${process.env.VNC_PASSWORD || 'password'}`,
     };
-    console.log('[SESSION_SERVICE] Session creation completed:', response);
+    Logger.info('[SESSION_SERVICE] Session creation completed:', response);
     return response;
   }
 
@@ -118,20 +171,17 @@ export class SessionService {
    * Store cookies for a session
    */
   static async storeSessionCookies(sessionId: number, encryptedCookies: string): Promise<void> {
-    console.log('[SESSION_SERVICE] Storing cookies for session:', sessionId);
-    
-    const session = await this.requireSession(sessionId);
+    Logger.info('[SESSION_SERVICE] Storing cookies for session:', sessionId);
 
-    console.log('[SESSION_SERVICE] Session found, updating with cookies...');
+    const session = await this.requireSession(sessionId);
     session.encryptedCookies = encryptedCookies;
     await this.updateSessionStatus(session, SessionStatus.COMPLETED);
-    console.log('[SESSION_SERVICE] Session updated successfully');
 
     if (session.containerId) {
       try {
         await DockerService.terminateContainer(session.containerId);
       } catch (e: any) {
-        console.error('[SESSION_SERVICE] Error cleaning up container:', e);
+        Logger.error('[SESSION_SERVICE] Error cleaning up container:', e);
         await this.updateSessionStatus(session, SessionStatus.DESTROYED);
       }
     }
@@ -141,16 +191,14 @@ export class SessionService {
    * Get cookies for a session
    */
   static async getSessionCookies(sessionId: number): Promise<string> {
-    console.log('[SESSION_SERVICE] Retrieving cookies for session:', sessionId);
-    
-    console.log('[SESSION_SERVICE] Finding session in database...');
+    Logger.info('[SESSION_SERVICE] Retrieving cookies for session:', sessionId);
+
     const session = await this.requireSession(sessionId);
-    
+
     if (!session.encryptedCookies) {
-      console.log('[SESSION_SERVICE] No cookies found for session:', sessionId);
+      Logger.info('[SESSION_SERVICE] No cookies found for session:', sessionId);
       throw new Error('No cookies found for this session');
     }
-    console.log('[SESSION_SERVICE] Cookies found, returning...');
     return decryptCookies(session.encryptedCookies);
   }
 
@@ -158,11 +206,10 @@ export class SessionService {
    * Terminate all active sessions
    */
   static async terminateAllSessions(): Promise<number> {
-    console.log('[SESSION_SERVICE] Terminating all active sessions');
+    Logger.info('[SESSION_SERVICE] Terminating all active sessions');
 
-    console.log('[SESSION_SERVICE] Finding all active sessions...');
     const activeSessions = await this.findSessionsByStatus([SessionStatus.PENDING, SessionStatus.ACTIVE]);
-    console.log('[SESSION_SERVICE] Found', activeSessions.length, 'active sessions');
+    Logger.info('[SESSION_SERVICE] Found', activeSessions.length, 'active sessions');
 
     let terminatedCount = 0;
     for (const session of activeSessions) {
@@ -170,7 +217,7 @@ export class SessionService {
       terminatedCount++;
     }
 
-    console.log('[SESSION_SERVICE] Successfully terminated', terminatedCount, 'sessions');
+    Logger.info('[SESSION_SERVICE] Successfully terminated', terminatedCount, 'sessions');
     return terminatedCount;
   }
 
@@ -178,11 +225,10 @@ export class SessionService {
    * Terminate all sessions for a specific user
    */
   static async terminateUserSessions(userId: number): Promise<number> {
-    console.log('[SESSION_SERVICE] Terminating sessions for user:', userId);
+    Logger.info('[SESSION_SERVICE] Terminating sessions for user:', userId);
 
-    console.log('[SESSION_SERVICE] Finding active sessions for user', userId, '...');
     const userSessions = await this.findSessionsByStatus([SessionStatus.PENDING, SessionStatus.ACTIVE], userId);
-    console.log('[SESSION_SERVICE] Found', userSessions.length, 'active sessions for user', userId);
+    Logger.info('[SESSION_SERVICE] Found', userSessions.length, 'active sessions for user', userId);
 
     let terminatedCount = 0;
     for (const session of userSessions) {
@@ -190,7 +236,7 @@ export class SessionService {
       terminatedCount++;
     }
 
-    console.log('[SESSION_SERVICE] Successfully terminated', terminatedCount, 'sessions for user', userId);
+    Logger.info('[SESSION_SERVICE] Successfully terminated', terminatedCount, 'sessions for user', userId);
     return terminatedCount;
   }
 
@@ -208,9 +254,6 @@ export class SessionService {
     createdAt: Date;
     updatedAt: Date;
   }>> {
-    console.log('[SESSION_SERVICE] Getting all sessions');
-    
-    console.log('[SESSION_SERVICE] Finding all sessions...');
     const sessions = await Session.findAll({
       include: [
         {
@@ -221,7 +264,6 @@ export class SessionService {
       ],
       order: [['createdAt', 'DESC']],
     });
-    console.log('[SESSION_SERVICE] Found', sessions.length, 'sessions');
 
     return sessions.map(session => ({
       id: session.id,
@@ -248,16 +290,12 @@ export class SessionService {
     createdAt: Date;
     updatedAt: Date;
   }>> {
-    console.log('[SESSION_SERVICE] Getting sessions for user:', userId);
-    
-    console.log('[SESSION_SERVICE] Finding sessions for user', userId, '...');
     const sessions = await Session.findAll({
       where: {
         userId: userId,
       },
       order: [['createdAt', 'DESC']],
     });
-    console.log('[SESSION_SERVICE] Found', sessions.length, 'sessions for user', userId);
 
     return sessions.map(session => ({
       id: session.id,
@@ -274,12 +312,12 @@ export class SessionService {
    * Terminate a specific session
    */
   static async terminateSession(sessionId: number): Promise<void> {
-    console.log('[SESSION_SERVICE] Terminating session:', sessionId);
-  
+    Logger.info('[SESSION_SERVICE] Terminating session:', sessionId);
+
     const session = await this.requireSession(sessionId);
 
     await this.terminateContainerAndUpdateStatus(session);
-    console.log('[SESSION_SERVICE] Session', sessionId, 'terminated successfully');
+    Logger.info('[SESSION_SERVICE] Session', sessionId, 'terminated successfully');
   }
 
   /**
@@ -287,17 +325,18 @@ export class SessionService {
    */
   static async cleanupExpiredSessions(): Promise<void> {
     const cutoff = new Date(Date.now() - this.SESSION_TIMEOUT_MINUTES * 60 * 1000);
-    console.log('[SESSION_SERVICE] Cleaning up sessions older than:', cutoff);
-    
+
     const expiredSessions = await Session.findAll({
       where: {
         status: [SessionStatus.PENDING, SessionStatus.ACTIVE],
         createdAt: { [require('sequelize').Op.lt]: cutoff },
       },
     });
-    
-    console.log('[SESSION_SERVICE] Found', expiredSessions.length, 'expired sessions');
-    
+
+    if (expiredSessions.length > 0) {
+      Logger.info('[SESSION_SERVICE] Cleaning up sessions older than:', cutoff);
+      Logger.info('[SESSION_SERVICE] Found', expiredSessions.length, 'expired sessions');
+    }
     for (const session of expiredSessions) {
       await this.terminateContainerAndUpdateStatus(session);
     }
@@ -308,35 +347,68 @@ export class SessionService {
    */
   static async extractCookiesForSession(sessionId: number): Promise<void> {
     const session = await this.requireSessionWithContainer(sessionId);
-    
+
     // Set status to TERMINATING
     await this.updateSessionStatus(session, SessionStatus.TERMINATING);
-    
+
     try {
       // Execute the cookie extraction script in the container with arguments
+      const scriptSecret = process.env.PYTHON_SCRIPT_SECRET || 'python-script-secret-key-2024';
       await DockerService.execInContainer(session.containerId, [
-        'python3', 
+        'python3',
         '/usr/local/bin/cookie_extractor.py',
         '--target-domain', session.targetDomain,
         '--session-id', sessionId.toString(),
-        '--backend-url', 'http://host.docker.internal:3000'
+        '--backend-url', 'http://host.docker.internal:3000',
+        '--script-secret', scriptSecret
       ]);
-      
+
       // Update status to COMPLETED (container termination will be handled by storeSessionCookies)
       await this.updateSessionStatus(session, SessionStatus.COMPLETED);
     } catch (error) {
-      console.error('[SESSION_SERVICE] Error during cookie extraction:', error);
-      
+      Logger.error('[SESSION_SERVICE] Error during cookie extraction:', error);
+
       // If cookie extraction fails, we still need to terminate the container
       try {
         await DockerService.terminateContainer(session.containerId);
-        console.log('[SESSION_SERVICE] Container terminated after failed cookie extraction');
+        Logger.info('[SESSION_SERVICE] Container terminated after failed cookie extraction');
       } catch (terminateError) {
-        console.error('[SESSION_SERVICE] Error terminating container after failed extraction:', terminateError);
+        Logger.error('[SESSION_SERVICE] Error terminating container after failed extraction:', terminateError);
       }
-      
+
       await this.updateSessionStatus(session, SessionStatus.FAILED);
       throw error;
+    }
+  }
+
+  static async getActiveSession(userId: number): Promise<{ sessionId: number; novncUrl: string } | null> {
+    const activeSessions = await this.findSessionsByStatus([SessionStatus.PENDING, SessionStatus.ACTIVE], userId);
+
+    if (activeSessions.length === 0) {
+      return null;
+    }
+
+    const session = activeSessions[0];
+    if (!session.containerId) {
+      return null;
+    }
+
+    try {
+      const ports = await DockerService.getContainerPorts(session.containerId);
+      if (!ports.novncPort) {
+        // Don't destroy the session, just return null
+        Logger.info(`[SESSION_SERVICE] Container ${session.containerId} exists but noVNC port not found for session ${session.id}`);
+        return null;
+      }
+
+      return {
+        sessionId: session.id,
+        novncUrl: `http://localhost:${ports.novncPort}/vnc.html?autoconnect=true&password=${process.env.VNC_PASSWORD || 'password'}`,
+      };
+    } catch (error) {
+      Logger.error(`[SESSION_SERVICE] Error getting active session details for session ${session.id}:`, error);
+      // Don't destroy the session, just return null
+      return null;
     }
   }
 } 

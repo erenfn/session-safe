@@ -16,11 +16,12 @@ import {
 import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
 import CloseIcon from '@mui/icons-material/Close';
 import StopIcon from '@mui/icons-material/Stop';
+import LogoutIcon from '@mui/icons-material/Logout';
 
-const BrowserMenu = ({ onClose, onTerminate, isClosing = false, style, defaultPosition = { x: 100, y: 100 } }) => {
+const BrowserMenu = ({ onClose, onTerminate, onDisconnect, isClosing = false, style, defaultPosition = { x: 100, y: 100 } }) => {
   const [position, setPosition] = useState(defaultPosition);
   const [dragging, setDragging] = useState(false);
-  const [clickedButton, setClickedButton] = useState(null); // 'close' | 'terminate' | null
+  const [clickedButton, setClickedButton] = useState(null); // 'close' | 'terminate' | 'disconnect' | null
   const dragOffset = useRef({ x: 0, y: 0 });
   const menuRef = useRef(null);
 
@@ -110,6 +111,20 @@ const BrowserMenu = ({ onClose, onTerminate, isClosing = false, style, defaultPo
         <ListItem disablePadding>
           <ListItemButton
             onClick={() => {
+              setClickedButton('disconnect');
+              onDisconnect();
+            }}
+            disabled={isClosing}
+          >
+            <ListItemIcon sx={{ minWidth: 'auto', mr: 1 }}>
+              {isClosing && clickedButton === 'disconnect' ? <CircularProgress size={16} /> : <LogoutIcon fontSize="small" />}
+            </ListItemIcon>
+            <ListItemText primary={<Typography variant="body2">Disconnect</Typography>} />
+          </ListItemButton>
+        </ListItem>
+        <ListItem disablePadding>
+          <ListItemButton
+            onClick={() => {
               setClickedButton('close');
               onClose();
             }}
@@ -118,7 +133,7 @@ const BrowserMenu = ({ onClose, onTerminate, isClosing = false, style, defaultPo
             <ListItemIcon sx={{ minWidth: 'auto', mr: 1 }}>
               {isClosing && clickedButton === 'close' ? <CircularProgress size={16} /> : <CloseIcon fontSize="small" />}
             </ListItemIcon>
-            <ListItemText primary="Close and save cookies" primaryTypographyProps={{ variant: 'body2' }} />
+            <ListItemText primary={<Typography variant="body2">Close and save cookies</Typography>} />
           </ListItemButton>
         </ListItem>
         <ListItem disablePadding>
@@ -132,7 +147,7 @@ const BrowserMenu = ({ onClose, onTerminate, isClosing = false, style, defaultPo
             <ListItemIcon sx={{ minWidth: 'auto', mr: 1 }}>
               {isClosing && clickedButton === 'terminate' ? <CircularProgress size={16} /> : <StopIcon fontSize="small" />}
             </ListItemIcon>
-            <ListItemText primary="Terminate" primaryTypographyProps={{ variant: 'body2' }} />
+            <ListItemText primary={<Typography variant="body2">Terminate</Typography>} />
           </ListItemButton>
         </ListItem>
       </List>
@@ -143,6 +158,7 @@ const BrowserMenu = ({ onClose, onTerminate, isClosing = false, style, defaultPo
 BrowserMenu.propTypes = {
   onClose: PropTypes.func.isRequired,
   onTerminate: PropTypes.func.isRequired,
+  onDisconnect: PropTypes.func.isRequired,
   isClosing: PropTypes.bool,
   style: PropTypes.object,
   defaultPosition: PropTypes.shape({

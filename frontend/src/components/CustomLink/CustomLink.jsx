@@ -9,6 +9,7 @@ const CustomLink = ({
   className = '',
   underline = 'none',
   onClick,
+  sx = {},
 }) => {
   const handleClick = (event) => {
     if (onClick) {
@@ -23,6 +24,7 @@ const CustomLink = ({
       className={`custom-link ${className}`}
       underline={underline}
       onClick={handleClick}
+      sx={sx}
     >
       {text}
     </Link>
@@ -35,6 +37,7 @@ CustomLink.propTypes = {
   className: PropTypes.string,
   underline: PropTypes.oneOf(['none', 'hover', 'always']),
   onClick: PropTypes.func,
+  sx: PropTypes.object,
 };
 
 export default CustomLink;

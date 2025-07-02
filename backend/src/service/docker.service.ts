@@ -1,5 +1,6 @@
 import Docker from 'dockerode';
 import { isContainerAlreadyRemoving, isContainerAlreadyStopped } from '../utils/docker.helper';
+import { Logger } from '../utils/logger.helper';
 
 const docker = new Docker();
 
@@ -8,9 +9,8 @@ export class DockerService {
    * Check if a Docker image exists
    */
   static async checkImageExists(imageName: string): Promise<boolean> {
-    console.log(`[DOCKER] Checking if image exists: ${imageName}`);
     const images = await docker.listImages({ filters: { reference: [imageName] } });
-    console.log(`[DOCKER] Found images: ${images.length}`);
+    Logger.info(`[DOCKER] Found images: ${images.length}`);
     return images.length > 0;
   }
 
@@ -22,7 +22,7 @@ export class DockerService {
     vncPort: string;
     novncPort: string;
   }> {
-    console.log('[DOCKER] Creating browser session container...');
+    Logger.info('[DOCKER] Creating browser session container...');
     
     const container = await docker.createContainer({
       Image: 'browser-session',
@@ -34,6 +34,7 @@ export class DockerService {
       Env: [
         `COOKIE_ENCRYPTION_KEY=${process.env.COOKIE_ENCRYPTION_KEY}`,
         `PYTHON_SCRIPT_SECRET=${process.env.PYTHON_SCRIPT_SECRET}`,
+        `VNC_PASSWORD=${process.env.VNC_PASSWORD}`,
       ],
       HostConfig: {
         PortBindings: {
@@ -43,30 +44,24 @@ export class DockerService {
         AutoRemove: true,
       },
     });
-    console.log('[DOCKER] Container created with ID:', container.id);
+    Logger.info('[DOCKER] Container created with ID:', container.id);
 
-    console.log('[DOCKER] Starting container...');
     await container.start();
-    console.log('[DOCKER] Container started successfully');
+    Logger.info('[DOCKER] Container started successfully');
 
-    console.log('[DOCKER] Waiting for container to initialize...');
     await new Promise(resolve => setTimeout(resolve, 5000));
 
-    console.log('[DOCKER] Inspecting container for port mappings...');
     const data = await container.inspect();
-    console.log('[DOCKER] Container inspection data:', JSON.stringify(data.NetworkSettings.Ports, null, 2));
-    
     const vncPortBinding = data.NetworkSettings.Ports['5901/tcp'];
     const novncPortBinding = data.NetworkSettings.Ports['6080/tcp'];
     
     if (!vncPortBinding?.[0] || !novncPortBinding?.[0]) {
-      console.error('[DOCKER] Port mappings not found:', { vncPortBinding, novncPortBinding });
+      Logger.error('[DOCKER] Port mappings not found:', { vncPortBinding, novncPortBinding });
       throw new Error('Container created but port mappings failed - VNC or noVNC ports not properly assigned');
     }
     
     const vncPort = vncPortBinding[0].HostPort;
     const novncPort = novncPortBinding[0].HostPort;
-    console.log('[DOCKER] Port mappings - VNC:', vncPort, 'noVNC:', novncPort);
 
     return {
       containerId: container.id,
@@ -79,29 +74,29 @@ export class DockerService {
    * Terminate a container (stop and remove)
    */
   static async terminateContainer(containerId: string): Promise<void> {
-    console.log(`[DOCKER] Terminating container: ${containerId}`);
+    Logger.info(`[DOCKER] Terminating container: ${containerId}`);
     const container = docker.getContainer(containerId);
     
     try {
       await container.stop({ t: 5 });
       await container.remove({ force: true });
-      console.log(`[DOCKER] Container ${containerId} terminated successfully`);
+      Logger.info(`[DOCKER] Container ${containerId} terminated successfully`);
     } catch (e: any) {
       // Handle case where container is already being removed
       if (isContainerAlreadyRemoving(e)) {
-        console.log(`[DOCKER] Container ${containerId} already being removed, skipping cleanup`);
+        Logger.info(`[DOCKER] Container ${containerId} already being removed, skipping cleanup`);
       } 
       // Handle case where container is already stopped
       else if (isContainerAlreadyStopped(e)) {
-        console.log(`[DOCKER] Container ${containerId} already stopped, proceeding with removal`);
+        Logger.info(`[DOCKER] Container ${containerId} already stopped, proceeding with removal`);
         try {
           await container.remove({ force: true });
-          console.log(`[DOCKER] Container ${containerId} removed successfully`);
+          Logger.info(`[DOCKER] Container ${containerId} removed successfully`);
         } catch (removeError: any) {
-          console.error(`[DOCKER] Error removing already-stopped container ${containerId}:`, removeError);
+          Logger.error(`[DOCKER] Error removing already-stopped container ${containerId}:`, removeError);
         }
       } else {
-        console.error(`[DOCKER] Error terminating container ${containerId}:`, e);
+        Logger.error(`[DOCKER] Error terminating container ${containerId}:`, e);
         throw e;
       }
     }
@@ -115,7 +110,7 @@ export class DockerService {
       const container = docker.getContainer(containerId);
       return await container.inspect();
     } catch (e: any) {
-      console.error(`[DOCKER] Error getting container info for ${containerId}:`, e);
+      Logger.error(`[DOCKER] Error getting container info for ${containerId}:`, e);
       throw e;
     }
   }
@@ -127,7 +122,7 @@ export class DockerService {
     try {
       return await docker.listContainers({ all: true });
     } catch (e: any) {
-      console.error('[DOCKER] Error listing containers:', e);
+      Logger.error('[DOCKER] Error listing containers:', e);
       throw e;
     }
   }
@@ -137,7 +132,7 @@ export class DockerService {
    */
   static async execInContainer(containerId: string, command: string[]): Promise<void> {
     try {
-      console.log(`[DOCKER] Executing command in container ${containerId}:`, command.join(' '));
+      Logger.info(`[DOCKER] Executing command in container ${containerId}:`, command.join(' '));
       const container = docker.getContainer(containerId);
       
       // Create exec instance
@@ -154,16 +149,40 @@ export class DockerService {
       await new Promise((resolve, reject) => {
         container.modem.demuxStream(stream, process.stdout, process.stderr);
         stream.on('end', () => {
-          console.log(`[DOCKER] Command execution completed in container ${containerId}`);
+          Logger.info(`[DOCKER] Command execution completed in container ${containerId}`);
           resolve(undefined);
         });
         stream.on('error', (error: any) => {
-          console.error(`[DOCKER] Error executing command in container ${containerId}:`, error);
+          Logger.error(`[DOCKER] Error executing command in container ${containerId}:`, error);
           reject(error);
         });
       });
     } catch (error) {
-      console.error(`[DOCKER] Error executing command in container ${containerId}:`, error);
+      Logger.error(`[DOCKER] Error executing command in container ${containerId}:`, error);
+      throw error;
+    }
+  }
+
+  static async getContainerPorts(containerId: string): Promise<{ vncPort: string; novncPort: string }> {
+    try {
+      const container = docker.getContainer(containerId);
+      const data = await container.inspect();
+      
+      const portBindings = data.NetworkSettings.Ports;
+      
+      const vncPort = portBindings['5901/tcp']?.[0]?.HostPort;
+      const novncPort = portBindings['6080/tcp']?.[0]?.HostPort;
+
+      if (!vncPort || !novncPort) {
+        throw new Error('Could not find port mappings for container');
+      }
+
+      return { vncPort, novncPort };
+    } catch (error: any) {
+      Logger.error(`[DOCKER] Error inspecting container ${containerId}:`, error);
+      if (error.statusCode === 404) {
+        return { vncPort: '', novncPort: '' };
+      }
       throw error;
     }
   }

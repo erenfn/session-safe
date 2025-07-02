@@ -38,7 +38,7 @@ export default function CustomTable({ fullData = [], headers = [], data = [] }) 
                     {tableData.map((row, rowIndex) => (
                         <TableRow key={rowIndex}>
                             {row.map((cell, cellIndex) => (
-                                <TableCell key={cellIndex} className={styles.data}>
+                                <TableCell key={cellIndex} className={`${styles.data} ${styles.messageWrap}`}>
                                     {typeof cell === 'boolean' ? (
                                         cell ? <DoneIcon style={{ color: 'var(--checkIcon-green)' }} /> : <CloseIcon style={{ color: 'var(--red-500)' }} />
                                     ) : (

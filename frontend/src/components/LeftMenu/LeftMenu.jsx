@@ -12,7 +12,7 @@ import {
 import AssessmentOutlinedIcon from '@mui/icons-material/AssessmentOutlined';
 import styles from './LeftMenu.module.css';
 import Logo from '../Logo/Logo';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Link as RouterLink } from 'react-router-dom';
 import UserProfileSidebar from '../UserProfileSidebar/UserProfileSidebar';
 import { useAuth } from '../../services/authProvider';
 import { renderIfAuthorized } from '../../utils/generalHelper';
@@ -73,13 +73,14 @@ function LeftMenu() {
               <ListItemButton
                 key={index}
                 className={styles.menuItem}
+                component={RouterLink}
+                to={item.route}
                 sx={{
                   backgroundColor:
                     location.pathname === item.route
                       ? 'var(--gray-200)'
                       : 'transparent',
                 }}
-                onClick={() => handleNavigation(item.route)}
               >
                 <ListItemIcon sx={{ color: 'var(--menu-icon-color)' }}>
                   {item.icon}

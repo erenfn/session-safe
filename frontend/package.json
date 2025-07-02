@@ -12,6 +12,7 @@
     "@vitejs/plugin-react-swc": "^3.7.1",
     "axios": "^1.6.8",
     "classnames": "^2.5.1",
+    "event-source-polyfill": "^1.0.31",
     "formik": "^2.4.6",
     "js-cookie": "^3.0.5",
     "mui-color-input": "^4.0.1",

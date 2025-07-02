@@ -157,13 +157,15 @@ const Sessions = () => {
         </h1>
         <Box className={styles.headerActions}>
           <Tooltip title="Refresh sessions">
-            <IconButton 
-              onClick={fetchSessions} 
-              color="primary"
-              disabled={loading}
-            >
-              <RefreshIcon />
-            </IconButton>
+            <span>
+              <IconButton 
+                onClick={fetchSessions} 
+                color="primary"
+                disabled={loading}
+              >
+                <RefreshIcon />
+              </IconButton>
+            </span>
           </Tooltip>
         </Box>
       </Box>
@@ -174,7 +176,7 @@ const Sessions = () => {
         </Alert>
       )}
 
-      <Box className={styles.tableContainer}>
+      <Box>
         {sessions.length === 0 ? (
           <Typography className={styles.noSessionsMessage}>
             No sessions found
@@ -202,6 +204,7 @@ const Sessions = () => {
               count={sessions.length}
               colSpan={tableHeaders.length}
               labelRowsPerPage="Sessions per page:"
+              component="div"
             />
             <Box className={styles.terminateAllButton}>
               <Button

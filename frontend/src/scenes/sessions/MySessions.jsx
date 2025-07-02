@@ -120,13 +120,15 @@ const MySessions = () => {
         </h1>
         <Box className={styles.headerActions}>
           <Tooltip title="Refresh sessions">
-            <IconButton 
-              onClick={fetchSessions} 
-              color="primary"
-              disabled={loading}
-            >
-              <RefreshIcon />
-            </IconButton>
+            <span>
+              <IconButton 
+                onClick={fetchSessions} 
+                color="primary"
+                disabled={loading}
+              >
+                <RefreshIcon />
+              </IconButton>
+            </span>
           </Tooltip>
         </Box>
       </Box>
@@ -164,12 +166,12 @@ const MySessions = () => {
               count={sessions.length}
               colSpan={tableHeaders.length}
               labelRowsPerPage="Sessions per page:"
+              component="div"
             />
           </>
         )}
       </Box>
 
-      {/* Cookies Dialog */}
       <CookiesDialog
         open={cookiesDialog.open}
         onClose={closeCookiesDialog}

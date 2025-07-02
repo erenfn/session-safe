@@ -19,6 +19,7 @@ def parse_arguments():
     parser.add_argument('--session-id', required=True, help='Session ID for posting cookies')
     parser.add_argument('--backend-url', default='http://host.docker.internal:3000', 
                        help='Backend URL for posting cookies (default: http://host.docker.internal:3000)')
+    parser.add_argument('--script-secret', default=None, help='Secret for authenticating with backend (overrides env var)')
     return parser.parse_args()
 
 # Pad key to 32 bytes
@@ -61,10 +62,15 @@ def extract_cookies(target_domain):
         return None
 
 
-def post_cookies(encrypted_cookies, backend_url, session_id):
+def post_cookies(encrypted_cookies, backend_url, session_id, script_secret=None):
     url = f"{backend_url}/api/session/{session_id}/cookies"
+    if script_secret is None:
+        script_secret = os.environ.get('PYTHON_SCRIPT_SECRET', 'python-script-secret-key-2024')
+    headers = {
+        "x-python-script-auth": script_secret
+    }
     try:
-        resp = requests.post(url, json={'encryptedCookies': encrypted_cookies})
+        resp = requests.post(url, json={'encryptedCookies': encrypted_cookies}, headers=headers)
         print(f"POST {url} status: {resp.status_code}")
         return resp.status_code == 200
     except Exception as e:
@@ -72,7 +78,7 @@ def post_cookies(encrypted_cookies, backend_url, session_id):
         return False
 
 
-def main(target_domain, backend_url, session_id):
+def main(target_domain, backend_url, session_id, script_secret=None):
     """
     Main function to extract cookies and post them to the backend.
     Polls for cookies for up to 5 minutes.
@@ -87,7 +93,7 @@ def main(target_domain, backend_url, session_id):
             print(f"Found cookies: {cookies}")
             data = json.dumps(cookies).encode('utf-8')
             encrypted = encrypt_data(data)
-            if post_cookies(encrypted, backend_url, session_id):
+            if post_cookies(encrypted, backend_url, session_id, script_secret):
                 print("Cookies sent successfully. Exiting.")
                 return
         time.sleep(check_interval_seconds)
@@ -96,4 +102,4 @@ def main(target_domain, backend_url, session_id):
 
 if __name__ == '__main__':
     args = parse_arguments()
-    main(args.target_domain, args.backend_url, args.session_id) 
+    main(args.target_domain, args.backend_url, args.session_id, args.script_secret) 

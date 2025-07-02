@@ -68,4 +68,32 @@ export const extractCookiesForSession = async (sessionId) => {
   } catch (error) {
     throw error;
   }
-}; 
+};
+
+// Terminate all sessions for a user (admin only)
+export const terminateUserSessions = async (userId) => {
+  try {
+    const response = await apiClient.post(`/session/terminate-user/${userId}`);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const getActiveSession = async () => {
+  try {
+    const response = await apiClient.get('/session/active');
+    return response.data.activeSession;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const terminateMyActiveSession = async () => {
+  try {
+    const response = await apiClient.post('/session/terminate-mine');
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};

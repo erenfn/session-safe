@@ -11,3 +11,10 @@
   font-size: var(--font-regular);
   color: var(--second-text-color) !important;
 }
+
+.messageWrap {
+  white-space: pre-line;
+  word-break: break-word;
+  max-width: 400px;
+  overflow-wrap: anywhere;
+}

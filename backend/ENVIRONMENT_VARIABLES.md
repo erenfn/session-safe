@@ -14,6 +14,7 @@ This document describes the required environment variables for the Session Safe 
 ### Application Configuration
 - `NODE_ENV`: Node.js environment (development/production)
 - `JWT_SECRET`: Secret key for JWT token signing
+- `BACKEND_HOST`: Hostname or IP address of the backend server (default: localhost)
 
 ### Security Variables
 - `COOKIE_ENCRYPTION_KEY`: 32-byte encryption key for cookie encryption
@@ -34,6 +35,7 @@ POSTGRES_PORT=5432
 # Application Configuration
 NODE_ENV=development
 JWT_SECRET=your_jwt_secret_key_here
+BACKEND_HOST=localhost
 
 # Cookie Encryption and Python Script Security
 COOKIE_ENCRYPTION_KEY=your_32_byte_encryption_key_here

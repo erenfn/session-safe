@@ -45,10 +45,15 @@ export default function VNCModal({ open, onClose, novncUrl, sessionId }) {
     }
   };
 
+  const handleDisconnect = () => {
+    if (isClosing) return;
+    onClose();
+  };
+
   return (
     <div className={styles.modal} onClick={handleClose}>
       <section className={styles.modalContent} onClick={e => e.stopPropagation()}>
-        <BrowserMenu onClose={handleClose} onTerminate={handleTerminate} isClosing={isClosing} />
+        <BrowserMenu onClose={handleClose} onTerminate={handleTerminate} onDisconnect={handleDisconnect} isClosing={isClosing} />
         <iframe
           src={novncUrl}
           className={styles.iframe}

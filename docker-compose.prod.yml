@@ -41,11 +41,10 @@ services:
     build: 
       context: ./frontend/
       dockerfile: Dockerfile.production
+      args:
+        VNC_PASSWORD: ${VNC_PASSWORD}
     ports:
       - "81:80"
-    environment:
-      - VITE_NODE_ENV=${NODE_ENV:-production}
-      - VITE_VNC_PASSWORD=${VNC_PASSWORD}
 
 volumes:
   pgdata:

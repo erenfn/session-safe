@@ -26,7 +26,9 @@ const Home = () => {
       const userId = userInfo.id;
       const targetDomain = 'amazon.com';
       const res = await createSession({ userId, targetDomain });
-      setNovncUrl(`${BASE_URL}:${res.novncPort}/vnc.html?autoconnect=true&password=${import.meta.env.VITE_VNC_PASSWORD}&resize=scale`);
+      const vncPassword = import.meta.env.VITE_VNC_PASSWORD;
+      const url = `${BASE_URL}:${res.novncPort}/vnc.html?autoconnect=true${vncPassword ? `&password=${vncPassword}` : ''}&resize=scale`;
+      setNovncUrl(url);
       setSessionId(res.sessionId);
       setModalOpen(true);
     } catch (e) {

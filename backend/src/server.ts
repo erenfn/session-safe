@@ -13,14 +13,15 @@ import { runSeeders } from './seeders/seeders';
 const { MAX_FILE_SIZE } = constantsHelper;
 
 const app = express();
-app.use(cors({
-  origin: 'http://localhost:4173',
+const corsOptions = {
+  origin: process.env.NODE_ENV === 'production' 
+    ? ['https://safesession.xyz', 'http://localhost:4173'] // Allow both production and development
+    : 'http://localhost:4173',
   credentials: true
-}));
-app.options('*', cors({
-  origin: 'http://localhost:4173',
-  credentials: true
-})); // this is for preflight requests
+};
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions)); // this is for preflight requests
 app.use(helmet());
 app.use(express.json({ limit: MAX_FILE_SIZE }));
 

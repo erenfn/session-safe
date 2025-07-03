@@ -11,8 +11,8 @@ RUN npm install
 
 COPY . .
 
-npm run build ; \
+RUN npm run build ; \
 
-docker build -f browser-session.Dockerfile -t browser-session . ; \
+RUN docker build -f browser-session.Dockerfile -t browser-session . ; \
 
 EXPOSE 3000

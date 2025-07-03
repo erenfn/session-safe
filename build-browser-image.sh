@@ -5,13 +5,8 @@ echo "Building browser-session Docker image..."
 # Check if .env file exists in root directory and load VNC_PASSWORD only
 if [ -f .env ]; then
     echo "✅ Found .env file in root directory, loading VNC_PASSWORD..."
-    # Source the .env file to load VNC_PASSWORD
-    export $(grep -v '^#' .env | xargs)
-    if [ ! -z "$VNC_PASSWORD" ]; then
-        echo "  Loaded: VNC_PASSWORD=$VNC_PASSWORD"
-    else
-        echo "  Warning: VNC_PASSWORD not found in .env file"
-    fi
+    # Only export VNC_PASSWORD from .env
+    export VNC_PASSWORD=$(grep '^VNC_PASSWORD=' .env | cut -d '=' -f2-)
     echo ""
 else
     echo "❌ No .env file found in root directory"

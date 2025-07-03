@@ -8,7 +8,6 @@ if exist .env (
     for /f "tokens=1,2 delims==" %%a in (.env) do (
         if "%%a"=="VNC_PASSWORD" (
             set VNC_PASSWORD=%%b
-            echo   Loaded: VNC_PASSWORD=%%b
         )
     )
     echo.

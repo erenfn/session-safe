@@ -1,7 +1,9 @@
 services:
   session-safe-backend:
     image: session-safe-backend/session-safe-backend:v0
-    build: ./backend
+    build: 
+      context: ./backend/
+      dockerfile: Dockerfile.production
     volumes:
       - /app/node_modules
       - /var/run/docker.sock:/var/run/docker.sock

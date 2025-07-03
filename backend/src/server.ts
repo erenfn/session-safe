@@ -14,9 +14,8 @@ const { MAX_FILE_SIZE } = constantsHelper;
 
 const app = express();
 const corsOptions = {
-  origin: process.env.NODE_ENV === 'production' 
-    ? ['https://safesession.xyz', 'http://localhost:4173'] // Allow both production and development
-    : 'http://localhost:4173',
+  origin: 
+    ['https://safesession.xyz', 'http://localhost:4173'],
   credentials: true
 };
 

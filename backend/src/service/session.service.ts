@@ -2,6 +2,8 @@ import { Session, SessionStatus, User } from '../models';
 import { DockerService } from './docker.service';
 import { decryptCookies } from '../utils/crypto.helper';
 import { Logger } from '../utils/logger.helper';
+import crypto from 'crypto';
+import { hashPassword } from '../utils/auth.helper';
 
 export class SessionService {
   private static SESSION_TIMEOUT_MINUTES = 8;
@@ -346,38 +348,35 @@ export class SessionService {
    * Trigger cookie extraction in the session's container
    */
   static async extractCookiesForSession(sessionId: number): Promise<void> {
+    Logger.info(`[SESSION_SERVICE] Starting cookie extraction for session: ${sessionId}`);
+
     const session = await this.requireSessionWithContainer(sessionId);
+
+    const plainTextSecret = crypto.randomBytes(32).toString('hex');
+    const hashedSecret = await hashPassword(plainTextSecret);
+    await Session.update({ pythonScriptSecret: hashedSecret }, { where: { id: sessionId } });
 
     // Set status to TERMINATING
     await this.updateSessionStatus(session, SessionStatus.TERMINATING);
+    // Command to execute in the container
+    const command = [
+      'python3',
+      '/usr/local/bin/cookie_extractor.py',
+      '--session-id', sessionId.toString(),
+      '--api-url', 'http://host.docker.internal:3000',
+      '--secret', plainTextSecret,
+      '--target-domain', session.targetDomain,
+      '--encryption-key', process.env.COOKIE_ENCRYPTION_KEY || 'this_is_a_32byte_key_12345678901'
+    ];
 
     try {
-      // Execute the cookie extraction script in the container with arguments
-      const scriptSecret = process.env.PYTHON_SCRIPT_SECRET || 'python-script-secret-key-2024';
-      await DockerService.execInContainer(session.containerId, [
-        'python3',
-        '/usr/local/bin/cookie_extractor.py',
-        '--target-domain', session.targetDomain,
-        '--session-id', sessionId.toString(),
-        '--backend-url', 'http://host.docker.internal:3000',
-        '--script-secret', scriptSecret
-      ]);
-
-      // Update status to COMPLETED (container termination will be handled by storeSessionCookies)
+      await DockerService.execInContainer(session.containerId, command, 'browser');
       await this.updateSessionStatus(session, SessionStatus.COMPLETED);
-    } catch (error) {
-      Logger.error('[SESSION_SERVICE] Error during cookie extraction:', error);
-
-      // If cookie extraction fails, we still need to terminate the container
-      try {
-        await DockerService.terminateContainer(session.containerId);
-        Logger.info('[SESSION_SERVICE] Container terminated after failed cookie extraction');
-      } catch (terminateError) {
-        Logger.error('[SESSION_SERVICE] Error terminating container after failed extraction:', terminateError);
-      }
-
+      Logger.info(`[SESSION_SERVICE] Successfully initiated cookie extraction for session: ${sessionId}`);
+    } catch (e: any) {
+      Logger.error(`[SESSION_SERVICE] Failed to extract cookies for session ${sessionId}:`, e);
       await this.updateSessionStatus(session, SessionStatus.FAILED);
-      throw error;
+      throw new Error('Failed to extract cookies');
     }
   }
 

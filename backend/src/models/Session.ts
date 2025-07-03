@@ -18,6 +18,7 @@ export interface SessionAttributes {
   containerId: string | null;
   status: SessionStatus;
   encryptedCookies: string | null;
+  pythonScriptSecret: string | null;
   createdAt: Date;
   updatedAt: Date;
   user?: {
@@ -29,7 +30,7 @@ export interface SessionAttributes {
 
 export type SessionCreationAttributes = Optional<
   SessionAttributes,
-  'id' | 'containerId' | 'encryptedCookies' | 'status' | 'createdAt' | 'updatedAt'
+  'id' | 'containerId' | 'encryptedCookies' | 'status' | 'createdAt' | 'updatedAt' | 'pythonScriptSecret'
 >;
 
 export class Session extends Model<SessionAttributes, SessionCreationAttributes> implements SessionAttributes {
@@ -39,6 +40,7 @@ export class Session extends Model<SessionAttributes, SessionCreationAttributes>
   public containerId!: string | null;
   public status!: SessionStatus;
   public encryptedCookies!: string | null;
+  public pythonScriptSecret!: string | null;
   public createdAt!: Date;
   public updatedAt!: Date;
   public user?: {
@@ -82,6 +84,10 @@ export default (sequelize: Sequelize): typeof Session => {
       },
       encryptedCookies: {
         type: DataTypes.TEXT,
+        allowNull: true,
+      },
+      pythonScriptSecret: {
+        type: DataTypes.STRING,
         allowNull: true,
       },
       createdAt: {

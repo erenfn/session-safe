@@ -33,7 +33,6 @@ export class DockerService {
       },
       Env: [
         `COOKIE_ENCRYPTION_KEY=${process.env.COOKIE_ENCRYPTION_KEY}`,
-        `PYTHON_SCRIPT_SECRET=${process.env.PYTHON_SCRIPT_SECRET}`,
         `VNC_PASSWORD=${process.env.VNC_PASSWORD}`,
       ],
       HostConfig: {
@@ -130,7 +129,11 @@ export class DockerService {
   /**
    * Execute a command inside a container
    */
-  static async execInContainer(containerId: string, command: string[]): Promise<void> {
+  static async execInContainer(
+    containerId: string,
+    command: string[],
+    user?: string
+  ): Promise<void> {
     try {
       Logger.info(`[DOCKER] Executing command in container ${containerId}:`, command.join(' '));
       const container = docker.getContainer(containerId);
@@ -140,6 +143,7 @@ export class DockerService {
         Cmd: command,
         AttachStdout: true,
         AttachStderr: true,
+        User: user,
       });
       
       // Start the exec and get stream

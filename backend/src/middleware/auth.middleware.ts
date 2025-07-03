@@ -7,14 +7,11 @@ import StatusError from '../utils/statusError';
 import TokenService from '../service/token.service';
 import UserService from '../service/user.service';
 import UserRole from '../enums/userRole.enum';
-import jwt from 'jsonwebtoken';
+import { Session } from '../models';
+import { comparePassword } from '../utils/auth.helper';
 
 const tokenService = new TokenService();
 const userService = new UserService();
-
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
-const PYTHON_SCRIPT_SECRET = process.env.PYTHON_SCRIPT_SECRET || 'python-script-secret-key-2024';
-
 // Check if user has admin role
 export const isAdmin = (role?: string): boolean => role === UserRole.ADMIN;
 
@@ -119,25 +116,37 @@ export default authenticateJWT;
  * Middleware to authenticate requests from the Python script
  * Uses a shared secret key for internal service communication
  */
-export const authenticatePythonScript = (req: Request, res: Response, next: NextFunction): void => {
-  const authHeader = req.headers['x-python-script-auth'];
+export const authenticatePythonScript = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const authHeader = req.headers['x-python-script-auth'] as string;
+    const sessionId = req.params.id;
 
-  if (!authHeader) {
-    console.log('[AUTH] Missing Python script authentication header');
-    res.status(401).json({ error: 'Python script authentication required' });
-    return;
+    if (!authHeader) {
+      res.status(401).json({ error: 'Python script authentication required' });
+      return;
+    }
+
+    if (!sessionId) {
+      res.status(400).json({ error: 'Session ID is required' });
+      return;
+    }
+    
+    const session = await Session.findByPk(sessionId);
+    if (!session || !session.pythonScriptSecret) {
+      res.status(404).json({ error: 'Session not found or secret not set' });
+      return;
+    }
+
+    const isMatch = await comparePassword(authHeader, session.pythonScriptSecret);
+    
+    if (!isMatch) {
+      res.status(403).json({ error: 'Invalid Python script authentication token' });
+      return;
+    }
+    
+    next();
+  } catch(error) {
+    console.error('[AUTH] Error in Python script authentication:', error);
+    res.status(500).json({ error: 'Internal server error during authentication' });
   }
-
-  if (authHeader !== PYTHON_SCRIPT_SECRET) {
-    console.log('[AUTH] Invalid Python script authentication token');
-    console.log('[AUTH] Received:', authHeader);
-    console.log('[AUTH] Expected:', PYTHON_SCRIPT_SECRET);
-    res.status(403).json({ error: 'Invalid Python script authentication token' });
-    return;
-  }
-
-  // Optionally set req.user to a special value for downstream logic
-  (req as any).user = { id: 'python-script', role: 'python-script' };
-  console.log('[AUTH] Python script authenticated successfully');
-  next();
 };

@@ -11,22 +11,20 @@ from cryptography.hazmat.primitives import padding
 
 # Updated path for Google Chrome
 CHROME_COOKIE_DB = os.path.expanduser('~/.config/google-chrome/Default/Cookies')
-ENCRYPTION_KEY = os.environ.get('COOKIE_ENCRYPTION_KEY', 'this_is_a_32byte_key_12345678901')
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Extract cookies from Chrome for a specific domain')
     parser.add_argument('--target-domain', required=True, help='Target domain to extract cookies for')
     parser.add_argument('--session-id', required=True, help='Session ID for posting cookies')
-    parser.add_argument('--backend-url', default='http://host.docker.internal:3000', 
-                       help='Backend URL for posting cookies (default: http://host.docker.internal:3000)')
-    parser.add_argument('--script-secret', default=None, help='Secret for authenticating with backend (overrides env var)')
+    parser.add_argument('--api-url', required=True, help='Backend API URL for posting cookies')
+    parser.add_argument('--secret', required=True, help='Secret for authenticating with backend')
+    parser.add_argument('--encryption-key', required=True, help='Encryption key for encrypting cookies')
     return parser.parse_args()
 
-# Pad key to 32 bytes
-key = ENCRYPTION_KEY.encode('utf-8')[:32].ljust(32, b'0')
+def get_key_from_args(args):
+    return args.encryption_key.encode('utf-8')[:32].ljust(32, b'0')
 
-
-def encrypt_data(data: bytes) -> str:
+def encrypt_data(data: bytes, key: bytes) -> str:
     iv = os.urandom(16)
     padder = padding.PKCS7(128).padder()
     padded = padder.update(data) + padder.finalize()
@@ -62,12 +60,10 @@ def extract_cookies(target_domain):
         return None
 
 
-def post_cookies(encrypted_cookies, backend_url, session_id, script_secret=None):
-    url = f"{backend_url}/api/session/{session_id}/cookies"
-    if script_secret is None:
-        script_secret = os.environ.get('PYTHON_SCRIPT_SECRET', 'python-script-secret-key-2024')
+def post_cookies(encrypted_cookies, api_url, session_id, secret):
+    url = f"{api_url}/api/session/{session_id}/cookies"
     headers = {
-        "x-python-script-auth": script_secret
+        "x-python-script-auth": secret
     }
     try:
         resp = requests.post(url, json={'encryptedCookies': encrypted_cookies}, headers=headers)
@@ -78,7 +74,7 @@ def post_cookies(encrypted_cookies, backend_url, session_id, script_secret=None)
         return False
 
 
-def main(target_domain, backend_url, session_id, script_secret=None):
+def main(target_domain, api_url, session_id, secret):
     """
     Main function to extract cookies and post them to the backend.
     Polls for cookies for up to 5 minutes.
@@ -92,8 +88,9 @@ def main(target_domain, backend_url, session_id, script_secret=None):
         if cookies:
             print(f"Found cookies: {cookies}")
             data = json.dumps(cookies).encode('utf-8')
-            encrypted = encrypt_data(data)
-            if post_cookies(encrypted, backend_url, session_id, script_secret):
+            key = get_key_from_args(args)
+            encrypted = encrypt_data(data, key)
+            if post_cookies(encrypted, api_url, session_id, secret):
                 print("Cookies sent successfully. Exiting.")
                 return
         time.sleep(check_interval_seconds)
@@ -102,4 +99,4 @@ def main(target_domain, backend_url, session_id, script_secret=None):
 
 if __name__ == '__main__':
     args = parse_arguments()
-    main(args.target_domain, args.backend_url, args.session_id, args.script_secret) 
+    main(args.target_domain, args.api_url, args.session_id, args.secret) 

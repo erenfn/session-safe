@@ -6,7 +6,7 @@ import crypto from 'crypto';
 import { hashPassword } from '../utils/auth.helper';
 
 export class SessionService {
-  private static SESSION_TIMEOUT_MINUTES = 8;
+  private static SESSION_TIMEOUT_MINUTES = 15;
 
   /**
    * Require a session by ID, throw if not found
@@ -330,7 +330,7 @@ export class SessionService {
 
     const expiredSessions = await Session.findAll({
       where: {
-        status: [SessionStatus.PENDING, SessionStatus.ACTIVE],
+        status: [SessionStatus.PENDING, SessionStatus.ACTIVE, SessionStatus.TERMINATING],
         createdAt: { [require('sequelize').Op.lt]: cutoff },
       },
     });

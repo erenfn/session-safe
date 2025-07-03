@@ -11,6 +11,13 @@ RUN npm install
 
 COPY . .
 
+# Build TypeScript code if in production environment
+RUN if [ "$NODE_ENV" = "production" ]; then \
+      npm run build ; \
+    else \
+      echo "Skipping build for non-production environment" ; \
+    fi
+
 # Build browser-session image if in production environment
 RUN if [ "$NODE_ENV" = "production" ]; then \
         echo "Building browser-session image for production..." && \

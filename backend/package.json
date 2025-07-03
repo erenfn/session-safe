@@ -8,7 +8,7 @@
     "build": "NODE_ENV=prod tsc",
     "dockerUp": "node -e \"const fs=require('fs');const env=fs.readFileSync('.env','utf8').match(/NODE_ENV=(.*)/)[1];require('child_process').execSync('docker-compose --env-file .env.'+env+' up',{stdio:'inherit'})\"",
     "dockerDown": "docker-compose down",
-    "prod": "node index.ts"
+    "prod": "node dist/index.js"
   },
   "keywords": [],
   "author": "",

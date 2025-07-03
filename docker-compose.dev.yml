@@ -46,7 +46,7 @@ services:
     ports:
       - "4173:4173"
     environment:
-      - NODE_ENV=${NODE_ENV:-development}
+      - VITE_NODE_ENV=${NODE_ENV:-development}
       - VITE_VNC_PASSWORD=${VNC_PASSWORD}
 
 volumes:

@@ -8,6 +8,7 @@ import toastEmitter, { TOAST_EMITTER_KEY } from '../../utils/toastEmitter';
 import styles from './Home.module.scss';
 import PopUpMessages from '../../components/PopUpMessages/PopUpMessages';
 import { Typography } from '@mui/material';
+import { BASE_URL } from '../../utils/constants';
 
 const Home = () => {
   const { userInfo } = useAuth();
@@ -25,7 +26,7 @@ const Home = () => {
       const userId = userInfo.id;
       const targetDomain = 'amazon.com';
       const res = await createSession({ userId, targetDomain });
-      setNovncUrl(`http://localhost:${res.novncPort}/vnc.html?autoconnect=true&password=${import.meta.env.VITE_VNC_PASSWORD}&resize=scale`);
+      setNovncUrl(`${BASE_URL}:${res.novncPort}/vnc.html?autoconnect=true&password=${import.meta.env.VITE_VNC_PASSWORD}&resize=scale`);
       setSessionId(res.sessionId);
       setModalOpen(true);
     } catch (e) {

@@ -2,6 +2,7 @@ import { Session, SessionStatus, User } from '../models';
 import { DockerService } from './docker.service';
 import { decryptCookies } from '../utils/crypto.helper';
 import { Logger } from '../utils/logger.helper';
+import constants from '../utils/constants.helper';
 import crypto from 'crypto';
 import { hashPassword } from '../utils/auth.helper';
 
@@ -110,9 +111,8 @@ export class SessionService {
         };
       }
 
-      const backendHost = process.env.BACKEND_HOST || 'localhost';
       const vncPassword = process.env.VNC_PASSWORD || 'password';
-      const novncUrl = `http://${backendHost}:${ports.novncPort}/vnc.html?autoconnect=true&password=${vncPassword}`;
+      const novncUrl = `${constants.BASE_URL}:${ports.novncPort}/vnc.html?autoconnect=true&password=${vncPassword}`;
       
       return {
         sessionId: session.id,
@@ -157,13 +157,12 @@ export class SessionService {
     session.containerId = containerInfo.containerId;
     await this.updateSessionStatus(session, SessionStatus.ACTIVE);
 
-    const backendHost = process.env.BACKEND_HOST || 'localhost';
     const response = {
       sessionId: session.id,
       vncPort: containerInfo.vncPort,
       novncPort: containerInfo.novncPort,
       containerId: containerInfo.containerId,
-      novncUrl: `http://${backendHost}:${containerInfo.novncPort}/vnc.html?autoconnect=true&password=${process.env.VNC_PASSWORD || 'password'}`,
+      novncUrl: `${constants.BASE_URL}:${containerInfo.novncPort}/vnc.html?autoconnect=true&password=${process.env.VNC_PASSWORD || 'password'}`,
     };
     Logger.info('[SESSION_SERVICE] Session creation completed:', response);
     return response;
@@ -402,7 +401,7 @@ export class SessionService {
 
       return {
         sessionId: session.id,
-        novncUrl: `http://localhost:${ports.novncPort}/vnc.html?autoconnect=true&password=${process.env.VNC_PASSWORD || 'password'}`,
+        novncUrl: `${constants.BASE_URL}:${ports.novncPort}/vnc.html?autoconnect=true&password=${process.env.VNC_PASSWORD || 'password'}`,
       };
     } catch (error) {
       Logger.error(`[SESSION_SERVICE] Error getting active session details for session ${session.id}:`, error);

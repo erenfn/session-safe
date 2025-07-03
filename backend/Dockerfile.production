@@ -13,6 +13,4 @@ COPY . .
 
 RUN npm run build
 
-RUN docker build -f browser-session.Dockerfile -t browser-session .
-
 EXPOSE 3000

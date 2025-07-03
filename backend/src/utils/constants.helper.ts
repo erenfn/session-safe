@@ -1,5 +1,8 @@
 import 'dotenv/config';
 
+const isProduction = process.env.NODE_ENV === 'production';
+const backendHost = isProduction ? 'safesession.xyz' : 'localhost';
+
 export default Object.freeze({
   JWT_EXPIRES_IN_1H: '1h',
   JWT_EXPIRES_IN_20M: '20m',
@@ -11,4 +14,5 @@ export default Object.freeze({
   },
   URL_PROTOCOL_REGEX: /^(https?:\/\/)/,
   URL_DOMAIN_REGEX: /^https?:\/\/([a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/,
+  BASE_URL: isProduction ? `https://${backendHost}` : `http://${backendHost}`,
 });

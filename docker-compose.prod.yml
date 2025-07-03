@@ -23,14 +23,6 @@ services:
     privileged: true
     command: >
       bash -c "
-        if ! npx sequelize-cli db:migrate --config src/config/connection.ts; then
-          echo 'Migration failed, attempting to create the database...'
-          if ! npx sequelize-cli db:create --config src/config/connection.ts; then
-            echo 'Database might already exist or creation failed.'
-          fi
-          echo 'Retrying migration...'
-          npx sequelize-cli db:migrate --config src/config/connection.ts
-        fi
         npm run prod
       "
   postgres:

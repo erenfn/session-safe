@@ -27,7 +27,7 @@ const Home = () => {
       const targetDomain = 'amazon.com';
       const res = await createSession({ userId, targetDomain });
       const vncPassword = import.meta.env.VITE_VNC_PASSWORD;
-      const url = `http://${BASE_URL}:${res.novncPort}/vnc.html?autoconnect=true${vncPassword ? `&password=${vncPassword}` : ''}&resize=scale`;
+      const url = `${BASE_URL}:${res.novncPort}/vnc.html?autoconnect=true${vncPassword ? `&password=${vncPassword}` : ''}&resize=scale`;
       setNovncUrl(url);
       setSessionId(res.sessionId);
       setModalOpen(true);

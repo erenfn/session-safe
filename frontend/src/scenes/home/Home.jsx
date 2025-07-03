@@ -19,13 +19,23 @@ const Home = () => {
   const [existingSessionInfo, setExistingSessionInfo] = useState(null);
   const [isSavingCookies, setIsSavingCookies] = useState(false);
 
+  const createScaledNoVNCUrl = (port) => {
+    // Calculate modal dimensions (92% of viewport)
+    const modalWidth = Math.floor(window.innerWidth * 0.92);
+    const modalHeight = Math.floor(window.innerHeight * 0.92);
+    
+    // Use resize=remote to let noVNC handle the resizing to fit the container
+    // This will make the VNC content fit the modal's actual dimensions
+    return `http://localhost:${port}/vnc.html?autoconnect=true&password=${import.meta.env.VITE_VNC_PASSWORD}&resize=remote&quality=6&compression=6`;
+  };
+
   const startNewSession = async () => {
     setLoading(true);
     try {
       const userId = userInfo.id;
       const targetDomain = 'amazon.com';
       const res = await createSession({ userId, targetDomain });
-      setNovncUrl(`http://localhost:${res.novncPort}/vnc.html?autoconnect=true&password=${import.meta.env.VITE_VNC_PASSWORD}`);
+      setNovncUrl(createScaledNoVNCUrl(res.novncPort));
       setSessionId(res.sessionId);
       setModalOpen(true);
     } catch (e) {
@@ -58,12 +68,19 @@ const Home = () => {
   };
 
   const handleGoBackToSession = () => {
-    if (existingSessionInfo && existingSessionInfo.novncUrl) {
-      setNovncUrl(existingSessionInfo.novncUrl);
-      setSessionId(existingSessionInfo.sessionId);
-      setModalOpen(true);
-      setShowActiveSessionPopup(false);
-      setExistingSessionInfo(null);
+    if (existingSessionInfo && existingSessionInfo.sessionId) {
+      // Extract port from existing URL and create new scaled URL
+      const urlMatch = existingSessionInfo.novncUrl?.match(/localhost:(\d+)/);
+      if (urlMatch) {
+        const port = urlMatch[1];
+        setNovncUrl(createScaledNoVNCUrl(port));
+        setSessionId(existingSessionInfo.sessionId);
+        setModalOpen(true);
+        setShowActiveSessionPopup(false);
+        setExistingSessionInfo(null);
+      } else {
+        toastEmitter.emit(TOAST_EMITTER_KEY, 'Cannot open existing session - invalid URL format.');
+      }
     } else {
       toastEmitter.emit(TOAST_EMITTER_KEY, 'Cannot open existing session - container may be in an invalid state.');
     }

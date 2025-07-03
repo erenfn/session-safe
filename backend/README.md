@@ -1,6 +1,6 @@
-# rockscraper-backend
+# SessionSafe Backend
 
-RockScraper is an AI and [UpRock's](https://uprock.com/) DePIN powered Scraper. This repository holds the backend of RockScraper.
+SessionSafe is a secure platform that allows you to securely connect to your accounts and retrieve cookies. This repository holds the backend of SessionSafe.
 
 ### Setup
 
@@ -15,7 +15,7 @@ POSTGRES_USER=your_username
 POSTGRES_PASSWORD=your_password
 POSTGRES_HOST=localhost
 POSTGRES_PORT=5432
-POSTGRES_DB=rockscraper_db
+POSTGRES_DB=sessionsafe_db
 ```
 
 ### Docker

@@ -8,12 +8,17 @@ import argparse
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import padding
+import glob
+import shutil
 
 # Updated path for Google Chrome
 CHROME_COOKIE_DB = os.path.expanduser('~/.config/google-chrome/Default/Cookies')
 
+# Updated path for Mozilla Firefox (browser user)
+FIREFOX_PROFILE_PATH = '/home/browser/.mozilla/firefox/'
+
 def parse_arguments():
-    parser = argparse.ArgumentParser(description='Extract cookies from Chrome for a specific domain')
+    parser = argparse.ArgumentParser(description='Extract cookies from Firefox for a specific domain')
     parser.add_argument('--target-domain', required=True, help='Target domain to extract cookies for')
     parser.add_argument('--session-id', required=True, help='Session ID for posting cookies')
     parser.add_argument('--api-url', required=True, help='Backend API URL for posting cookies')
@@ -33,14 +38,74 @@ def encrypt_data(data: bytes, key: bytes) -> str:
     ct = encryptor.update(padded) + encryptor.finalize()
     return base64.b64encode(iv + ct).decode('utf-8')
 
+def get_firefox_cookie_db():
+    print(f"DEBUG: Looking for Firefox profiles in: {FIREFOX_PROFILE_PATH}")
+    if not os.path.exists(FIREFOX_PROFILE_PATH):
+        print(f"DEBUG: Firefox profile path does not exist: {FIREFOX_PROFILE_PATH}")
+        return None
+    
+    # Prefer *.default-release profile
+    default_release_profiles = glob.glob(os.path.join(FIREFOX_PROFILE_PATH, '*.default-release'))
+    if default_release_profiles:
+        print(f"DEBUG: Found default-release profile(s): {default_release_profiles}")
+        cookie_db = os.path.join(default_release_profiles[0], 'cookies.sqlite')
+        print(f"DEBUG: Using cookie database: {cookie_db}")
+        return cookie_db
+    
+    # Fallback to any *.default* profile
+    profiles = glob.glob(os.path.join(FIREFOX_PROFILE_PATH, '*.default*'))
+    print(f"DEBUG: Found {len(profiles)} Firefox profiles: {profiles}")
+    if not profiles:
+        print("DEBUG: No Firefox profiles found")
+        return None
+    cookie_db = os.path.join(profiles[0], 'cookies.sqlite')
+    print(f"DEBUG: Using cookie database: {cookie_db}")
+    return cookie_db
 
 def extract_cookies(target_domain):
-    if not os.path.exists(CHROME_COOKIE_DB):
+    print(f"DEBUG: Extracting cookies for domain: {target_domain}")
+    cookie_db = get_firefox_cookie_db()
+    
+    if not cookie_db:
+        print("DEBUG: No cookie database found")
         return None
+    
+    if not os.path.exists(cookie_db):
+        print(f"DEBUG: Cookie database file does not exist: {cookie_db}")
+        return None
+    
+    print(f"DEBUG: Cookie database exists, size: {os.path.getsize(cookie_db)} bytes")
+    
+    # Copy the database to a temp location to avoid 'database is locked' error
+    temp_db = '/tmp/cookies.sqlite'
     try:
-        conn = sqlite3.connect(CHROME_COOKIE_DB)
+        shutil.copy2(cookie_db, temp_db)
+        print(f"DEBUG: Copied cookie database to {temp_db}")
+    except Exception as e:
+        print(f"DEBUG: Failed to copy cookie database: {e}")
+        return None
+
+    try:
+        conn = sqlite3.connect(temp_db)
         cursor = conn.cursor()
-        cursor.execute("SELECT name, value, host_key, path, expires_utc, is_secure, is_httponly FROM cookies WHERE host_key LIKE ?", (f"%{target_domain}",))
+        # Check if moz_cookies table exists
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='moz_cookies'")
+        if not cursor.fetchone():
+            print("DEBUG: moz_cookies table does not exist")
+            # List all tables for debugging
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+            tables = cursor.fetchall()
+            print(f"DEBUG: Available tables: {[table[0] for table in tables]}")
+            conn.close()
+            return None
+        
+        query = "SELECT name, value, host, path, expiry, isSecure, isHttpOnly FROM moz_cookies WHERE host = ? OR host LIKE ?"
+        print(f"DEBUG: Executing query: {query} with parameters: {target_domain}, %.{target_domain}")
+        
+        cursor.execute(query, (target_domain, f"%.{target_domain}"))
+        rows = cursor.fetchall()
+        print(f"DEBUG: Found {len(rows)} cookie rows")
+        
         cookies = [
             {
                 'name': row[0],
@@ -51,51 +116,69 @@ def extract_cookies(target_domain):
                 'secure': bool(row[5]),
                 'httponly': bool(row[6]),
             }
-            for row in cursor.fetchall()
+            for row in rows
         ]
+        
+        print(f"DEBUG: Processed {len(cookies)} cookies")
+        if cookies:
+            print(f"DEBUG: Cookie names: {[cookie['name'] for cookie in cookies]}")
+        
         conn.close()
         return cookies if cookies else None
     except Exception as e:
-        print(f"Error extracting cookies: {e}")
+        print(f"DEBUG: Error extracting cookies: {e}")
+        import traceback
+        traceback.print_exc()
         return None
-
 
 def post_cookies(encrypted_cookies, api_url, session_id, secret):
     url = f"{api_url}/api/session/{session_id}/cookies"
     headers = {
         "x-python-script-auth": secret
     }
+    print(f"DEBUG: Posting cookies to: {url}")
+    print(f"DEBUG: Headers: {headers}")
     try:
         resp = requests.post(url, json={'encryptedCookies': encrypted_cookies}, headers=headers)
-        print(f"POST {url} status: {resp.status_code}")
+        print(f"DEBUG: POST {url} status: {resp.status_code}")
+        print(f"DEBUG: Response content: {resp.text[:200]}...")  # First 200 chars
         return resp.status_code == 200
     except Exception as e:
-        print(f"Error posting cookies: {e}")
+        print(f"DEBUG: Error posting cookies: {e}")
+        import traceback
+        traceback.print_exc()
         return False
-
 
 def main(target_domain, api_url, session_id, secret):
     """
     Main function to extract cookies and post them to the backend.
-    Polls for cookies for up to 5 minutes.
+    Polls for cookies for up to 3 minutes.
     """
-    timeout_seconds = 300  # 5 minutes
+    print(f"DEBUG: Starting cookie extraction for domain: {target_domain}")
+    print(f"DEBUG: API URL: {api_url}")
+    print(f"DEBUG: Session ID: {session_id}")
+    
+    timeout_seconds = 180  # 3 minutes
     check_interval_seconds = 10
     start_time = time.time()
 
     while time.time() - start_time < timeout_seconds:
+        print(f"DEBUG: Attempt {int((time.time() - start_time) / check_interval_seconds) + 1}")
         cookies = extract_cookies(target_domain)
         if cookies:
-            print(f"Found cookies: {cookies}")
+            print(f"DEBUG: Found cookies: {cookies}")
             data = json.dumps(cookies).encode('utf-8')
             key = get_key_from_args(args)
             encrypted = encrypt_data(data, key)
+            print(f"DEBUG: Encrypted data length: {len(encrypted)}")
             if post_cookies(encrypted, api_url, session_id, secret):
-                print("Cookies sent successfully. Exiting.")
+                print("DEBUG: Cookies sent successfully. Exiting.")
                 return
+        else:
+            print("DEBUG: No cookies found in this attempt")
         time.sleep(check_interval_seconds)
-    
-    print("Timeout: No cookies found after 10 minutes.")
+
+    print("DEBUG: Timeout: No cookies found after 3 minutes.")
 
 if __name__ == '__main__':
     args = parse_arguments()

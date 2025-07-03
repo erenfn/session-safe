@@ -13,27 +13,30 @@ ENV VNC_PASSWORD=$VNC_PASSWORD
 RUN groupadd -g 1000 browser && \
     useradd -u 1000 -g browser -m -s /bin/bash browser
 
-# Install minimal dependencies for browser-only setup
+# Install minimal dependencies and Firefox (deb package, not snap)
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-    wget \
-    gnupg \
-    xvfb \
-    x11vnc \
-    fluxbox \
-    novnc \
-    websockify \
-    supervisor \
-    python3 \
-    python3-pip \
-    dbus-x11 \
-    wmctrl \
-    sudo \
-    && wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | apt-key add - \
-    && echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google-chrome.list \
-    && apt-get update \
-    && apt-get install -y --no-install-recommends google-chrome-stable \
-    && apt-get clean && rm -rf /var/lib/apt/lists/*
+        wget \
+        gnupg \
+        software-properties-common \
+        xvfb \
+        x11vnc \
+        fluxbox \
+        novnc \
+        websockify \
+        supervisor \
+        python3 \
+        python3-pip \
+        dbus-x11 \
+        wmctrl \
+        sudo && \
+    add-apt-repository -y ppa:mozillateam/ppa && \
+    echo "Package: firefox*" > /etc/apt/preferences.d/mozilla-firefox && \
+    echo "Pin: release o=LP-PPA-mozillateam" >> /etc/apt/preferences.d/mozilla-firefox && \
+    echo "Pin-Priority: 1001" >> /etc/apt/preferences.d/mozilla-firefox && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends firefox && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies for cookie extraction
 RUN pip3 install requests cryptography
@@ -46,14 +49,12 @@ RUN chmod +x /usr/local/bin/cookie_extractor.py
 RUN mkdir -p /home/browser/.fluxbox
 COPY docker/fluxbox-init /home/browser/.fluxbox/init
 
-# Set up Chrome preferences to avoid first-run prompts for browser user
-COPY docker/chrome_preferences.json /tmp/chrome_preferences.json
-RUN mkdir -p /home/browser/.config/google-chrome/Default && \
-    cp /tmp/chrome_preferences.json /home/browser/.config/google-chrome/Default/Preferences
+# Set up Firefox preferences to avoid first-run prompts for browser user
+# (Optional: Add a user.js if needed)
 
-# Copy and make chrome command script executable
-COPY docker/chrome-command.sh /app/chrome-command.sh
-RUN chmod +x /app/chrome-command.sh
+# Copy and make firefox command script executable
+COPY docker/firefox-command.sh /app/firefox-command.sh
+RUN chmod +x /app/firefox-command.sh
 
 # Copy and make x11vnc start script executable
 COPY docker/start-x11vnc.sh /usr/local/bin/start-x11vnc.sh
@@ -67,7 +68,7 @@ RUN mkdir -p /var/log/supervisor && \
     mkdir -p /var/run && \
     chown -R browser:browser /home/browser && \
     chown browser:browser /usr/local/bin/cookie_extractor.py && \
-    chown browser:browser /app/chrome-command.sh && \
+    chown browser:browser /app/firefox-command.sh && \
     chmod 755 /var/log/supervisor && \
     chmod 755 /var/run
 

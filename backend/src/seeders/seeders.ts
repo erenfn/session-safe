@@ -1,6 +1,6 @@
 import bcrypt from 'bcryptjs';
 import { QueryInterface, QueryTypes } from 'sequelize';
-import UserRole from '../src/enums/userRole.enum';
+import UserRole from '../enums/userRole.enum';
 
 const hashPassword = async (password: string): Promise<string> => {
   return await bcrypt.hash(password, 10);

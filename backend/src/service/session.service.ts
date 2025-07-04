@@ -112,7 +112,7 @@ export class SessionService {
       }
 
       const vncPassword = session.vncPassword || 'password';
-      const novncUrl = `${constants.BASE_URL}:${ports.novncPort}/vnc.html?autoconnect=true&password=${vncPassword}&resize=scale`;
+      const novncUrl = `${constants.BASE_URL}/novnc/${session.id}/vnc.html?autoconnect=true&password=${vncPassword}&resize=scale`;
       
       return {
         sessionId: session.id,
@@ -170,7 +170,7 @@ export class SessionService {
       vncPort: containerInfo.vncPort,
       novncPort: containerInfo.novncPort,
       containerId: containerInfo.containerId,
-      novncUrl: `${constants.BASE_URL}:${containerInfo.novncPort}/vnc.html?autoconnect=true&password=${vncPassword}&resize=scale`,
+      novncUrl: `${constants.BASE_URL}/novnc/${session.id}/vnc.html?autoconnect=true&password=${vncPassword}&resize=scale`,
     };
     Logger.info('[SESSION_SERVICE] Session creation completed:', response);
     return response;
@@ -408,7 +408,7 @@ export class SessionService {
       }
 
       const vncPassword = session.vncPassword || 'password';
-      const novncUrl = `${constants.BASE_URL}:${ports.novncPort}/vnc.html?autoconnect=true&password=${vncPassword}&resize=scale`;
+      const novncUrl = `${constants.BASE_URL}/novnc/${session.id}/vnc.html?autoconnect=true&password=${vncPassword}&resize=scale`;
       
       return {
         sessionId: session.id,
@@ -419,5 +419,15 @@ export class SessionService {
       // Don't destroy the session, just return null
       return null;
     }
+  }
+
+  /**
+   * Get the noVNC port for a session (for nginx dynamic proxy)
+   */
+  static async getNoVncPort(sessionId: number): Promise<string | null> {
+    const session = await Session.findByPk(sessionId);
+    if (!session || !session.containerId) return null;
+    const ports = await DockerService.getContainerPorts(session.containerId);
+    return ports.novncPort ? String(ports.novncPort) : null;
   }
 } 

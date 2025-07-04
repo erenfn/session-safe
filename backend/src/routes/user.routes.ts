@@ -1,14 +1,5 @@
 import express from "express";
-import { 
-    getUsersList,
-    getCurrentUser,
-    updateUserDetails,
-    checkAtLeastOneField,
-    validateProfileUpdate,
-    handleValidationErrors,
-    deleteUser,
-    hasUsers
-} from "../controllers/user.controller";
+import { getCurrentUser } from "../controllers/user.controller";
 import authenticateJWT from "../middleware/auth.middleware";
 
 const router = express.Router();

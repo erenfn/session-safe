@@ -336,4 +336,19 @@ export const getSessionServiceLogs = (req: UserRequestInterface, res: Response) 
     clearInterval(keepAliveInterval);
     res.end();
   });
+};
+
+// GET /api/novnc-port/:sessionId
+export const getNoVncPort: RequestHandler = async (req, res) => {
+  const { sessionId } = req.params;
+  try {
+    const port = await SessionService.getNoVncPort(Number(sessionId));
+    if (!port) {
+      res.status(404).send('Not found');
+      return;
+    }
+    res.status(200).send(port);
+  } catch (error) {
+    res.status(500).send('Error');
+  }
 }; 

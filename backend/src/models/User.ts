@@ -10,7 +10,6 @@ interface UserAttributes {
   createdAt: Date;
 }
 
-// When creating a user, the ID and createdAt are optional (auto-generated)
 interface UserCreationAttributes extends Optional<UserAttributes, 'id' | 'createdAt'> {}
 
 class User extends Model<UserAttributes, UserCreationAttributes> implements UserAttributes {

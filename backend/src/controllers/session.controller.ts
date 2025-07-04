@@ -347,6 +347,8 @@ export const getNoVncPort: RequestHandler = async (req, res) => {
       res.status(404).send('Not found');
       return;
     }
+    // Set the port in a header that nginx can read
+    res.setHeader('X-Port', port);
     res.status(200).send(port);
   } catch (error) {
     res.status(500).send('Error');

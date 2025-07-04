@@ -111,8 +111,8 @@ export class SessionService {
         };
       }
 
-      const vncPassword = process.env.VNC_PASSWORD || 'password';
-      const novncUrl = `${constants.BASE_URL}:${ports.novncPort}/vnc.html?autoconnect=true&password=${vncPassword}`;
+      const vncPassword = session.vncPassword || 'password';
+      const novncUrl = `${constants.BASE_URL}:${ports.novncPort}/vnc.html?autoconnect=true&password=${vncPassword}&resize=scale`;
       
       return {
         sessionId: session.id,
@@ -149,10 +149,18 @@ export class SessionService {
       userId,
       targetDomain,
       status: SessionStatus.PENDING,
+      vncPassword: null, // will set after generation
     });
     Logger.info('[SESSION_SERVICE] Database session created with ID:', session.id, 'for userId:', userId);
 
-    const containerInfo = await DockerService.createBrowserSessionContainer();
+    // Generate a secure random VNC password
+    const vncPassword = crypto.randomBytes(8).toString('base64').replace(/[^a-zA-Z0-9]/g, '').slice(0, 12);
+    session.vncPassword = vncPassword;
+    await session.save();
+
+    const containerInfo = await DockerService.createBrowserSessionContainer(
+      vncPassword // pass to DockerService for container setup
+    );
 
     session.containerId = containerInfo.containerId;
     await this.updateSessionStatus(session, SessionStatus.ACTIVE);
@@ -162,7 +170,7 @@ export class SessionService {
       vncPort: containerInfo.vncPort,
       novncPort: containerInfo.novncPort,
       containerId: containerInfo.containerId,
-      novncUrl: `${constants.BASE_URL}:${containerInfo.novncPort}/vnc.html?autoconnect=true&password=${process.env.VNC_PASSWORD || 'password'}`,
+      novncUrl: `${constants.BASE_URL}:${containerInfo.novncPort}/vnc.html?autoconnect=true&password=${vncPassword}&resize=scale`,
     };
     Logger.info('[SESSION_SERVICE] Session creation completed:', response);
     return response;
@@ -399,9 +407,12 @@ export class SessionService {
         return null;
       }
 
+      const vncPassword = session.vncPassword || 'password';
+      const novncUrl = `${constants.BASE_URL}:${ports.novncPort}/vnc.html?autoconnect=true&password=${vncPassword}&resize=scale`;
+      
       return {
         sessionId: session.id,
-        novncUrl: `${constants.BASE_URL}:${ports.novncPort}/vnc.html?autoconnect=true&password=${process.env.VNC_PASSWORD || 'password'}`,
+        novncUrl: novncUrl,
       };
     } catch (error) {
       Logger.error(`[SESSION_SERVICE] Error getting active session details for session ${session.id}:`, error);

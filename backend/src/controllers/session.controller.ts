@@ -3,6 +3,7 @@ import UserRequestInterface from '../interfaces/request.interface';
 import { SessionService } from '../service/session.service';
 import { requireAdmin } from '../middleware/auth.middleware';
 import StatusError from '../utils/statusError';
+import HTTP_STATUS_CODES from '../utils/httpCodes';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -13,8 +14,7 @@ export const createSession: RequestHandler = async (req: UserRequestInterface, r
   
   if (!userId || !targetDomain) {
     console.log('[SESSION] Missing required fields:', { userId, targetDomain });
-    res.status(400).json({ error: 'userId and targetDomain are required' });
-    return;
+    throw new StatusError('userId and targetDomain are required', HTTP_STATUS_CODES.BAD_REQUEST);
   }
 
   try {
@@ -36,11 +36,6 @@ export const createSession: RequestHandler = async (req: UserRequestInterface, r
   } catch (error: any) {
     console.error('[SESSION] Error creating session:', error);
     
-    if (error instanceof StatusError) {
-      res.status(error.statusCode).json({ error: error.message });
-      return;
-    }
-    
     let errorMessage = 'Failed to create session';
     if (error.code === 'ENOENT') {
       errorMessage = 'Docker not found or not accessible';
@@ -50,11 +45,7 @@ export const createSession: RequestHandler = async (req: UserRequestInterface, r
       errorMessage = 'Docker image issue: ' + error.message;
     }
     
-    res.status(500).json({ 
-      error: errorMessage,
-      details: error.message,
-      code: error.code 
-    });
+    throw new StatusError(errorMessage, HTTP_STATUS_CODES.INTERNAL_SERVER_ERROR);
   }
 };
 
@@ -67,8 +58,7 @@ export const storeSessionCookies: RequestHandler = async (req, res) => {
   
   if (!encryptedCookies) {
     console.log('[COOKIES] Missing encryptedCookies in request body');
-    res.status(400).json({ error: 'encryptedCookies is required' });
-    return;
+    throw new StatusError('encryptedCookies is required', HTTP_STATUS_CODES.BAD_REQUEST);
   }
 
   try {
@@ -86,7 +76,7 @@ export const storeSessionCookies: RequestHandler = async (req, res) => {
     if (error.message === 'Session not found') {
       res.status(404).json({ error: 'Session not found' });
     } else {
-      res.status(500).json({ error: 'Failed to store cookies', details: error.message });
+      throw new StatusError('Failed to store cookies', HTTP_STATUS_CODES.INTERNAL_SERVER_ERROR);
     }
   }
 };
@@ -103,8 +93,7 @@ export const getSessionCookies: RequestHandler = async (req: UserRequestInterfac
     const isOwner = await SessionService.checkSessionOwnership(Number(id), Number(userId));
     if (!isOwner) {
       console.log(`[COOKIES] User ${userId} attempted to retrieve cookies for session ${id} they don't own`);
-      res.status(403).json({ error: 'Access denied: You can only view cookies from your own sessions' });
-      return;
+      throw new StatusError('Access denied: You can only view cookies from your own sessions', HTTP_STATUS_CODES.FORBIDDEN);
     }
 
     console.log(`[COOKIES] User ${userId} authorized to retrieve cookies for session ${id}`);
@@ -121,7 +110,7 @@ export const getSessionCookies: RequestHandler = async (req: UserRequestInterfac
     if (error.message === 'Session not found' || error.message === 'No cookies found for this session') {
       res.status(404).json({ error: error.message });
     } else {
-      res.status(500).json({ error: 'Failed to retrieve cookies', details: error.message });
+      throw new StatusError('Failed to retrieve cookies', HTTP_STATUS_CODES.INTERNAL_SERVER_ERROR);
     }
   }
 };
@@ -139,7 +128,7 @@ export const terminateAllSessions: RequestHandler = async (req: UserRequestInter
     });
   } catch (error: any) {
     console.error('[SESSION] Error terminating all sessions:', error);
-    res.status(500).json({ error: 'Failed to terminate sessions', details: error.message });
+    throw new StatusError('Failed to terminate sessions', HTTP_STATUS_CODES.INTERNAL_SERVER_ERROR);
   }
 };
 
@@ -157,7 +146,7 @@ export const terminateUserSessions: RequestHandler = async (req: UserRequestInte
     });
   } catch (error: any) {
     console.error('[SESSION] Error terminating user sessions:', error);
-    res.status(500).json({ error: 'Failed to terminate user sessions', details: error.message });
+    throw new StatusError('Failed to terminate user sessions', HTTP_STATUS_CODES.INTERNAL_SERVER_ERROR);
   }
 };
 
@@ -173,7 +162,7 @@ export const getAllSessions: RequestHandler = async (req: UserRequestInterface, 
     });
   } catch (error: any) {
     console.error('[SESSION] Error fetching all sessions:', error);
-    res.status(500).json({ error: 'Failed to fetch sessions', details: error.message });
+    throw new StatusError('Failed to fetch sessions', HTTP_STATUS_CODES.INTERNAL_SERVER_ERROR);
   }
 };
 
@@ -184,8 +173,7 @@ export const getCurrentUserSessions: RequestHandler = async (req: UserRequestInt
   
   if (!userId) {
     console.log('[SESSION] No user ID found in request');
-    res.status(401).json({ error: 'User not authenticated' });
-    return;
+    throw new StatusError('User not authenticated', HTTP_STATUS_CODES.UNAUTHORIZED);
   }
   
   try {
@@ -196,7 +184,7 @@ export const getCurrentUserSessions: RequestHandler = async (req: UserRequestInt
     });
   } catch (error: any) {
     console.error('[SESSION] Error fetching user sessions:', error);
-    res.status(500).json({ error: 'Failed to fetch user sessions', details: error.message });
+    throw new StatusError('Failed to fetch user sessions', HTTP_STATUS_CODES.INTERNAL_SERVER_ERROR);
   }
 };
 
@@ -217,7 +205,7 @@ export const terminateSession: RequestHandler = async (req: UserRequestInterface
     if (error.message === 'Session not found') {
       res.status(404).json({ error: 'Session not found' });
     } else {
-      res.status(500).json({ error: 'Failed to terminate session', details: error.message });
+      throw new StatusError('Failed to terminate session', HTTP_STATUS_CODES.INTERNAL_SERVER_ERROR);
     }
   }
 };
@@ -234,8 +222,7 @@ export const extractCookiesForSession: RequestHandler = async (req: UserRequestI
     const isOwner = await SessionService.checkSessionOwnership(Number(id), Number(userId));
     if (!isOwner) {
       console.log(`[SESSION] User ${userId} attempted to extract cookies for session ${id} they don't own`);
-      res.status(403).json({ error: 'Access denied: You can only extract cookies from your own sessions' });
-      return;
+      throw new StatusError('Access denied: You can only extract cookies from your own sessions', HTTP_STATUS_CODES.FORBIDDEN);
     }
 
     console.log(`[SESSION] User ${userId} authorized to extract cookies for session ${id}`);
@@ -247,7 +234,7 @@ export const extractCookiesForSession: RequestHandler = async (req: UserRequestI
     if (error.message === 'Session or container not found') {
       res.status(404).json({ error: 'Session not found' });
     } else {
-      res.status(500).json({ error: 'Failed to extract cookies', details: error.message });
+      throw new StatusError('Failed to extract cookies', HTTP_STATUS_CODES.INTERNAL_SERVER_ERROR);
     }
   }
 };
@@ -259,7 +246,8 @@ export const getActiveSession: RequestHandler = async (req: UserRequestInterface
     const activeSession = await SessionService.getActiveSession(Number(userId));
     res.status(200).json({ success: true, activeSession });
   } catch (error: any) {
-    res.status(500).json({ error: 'Failed to fetch active session', details: error.message });
+    console.error('[SESSION] Error fetching active session:', error);
+    throw new StatusError('Failed to fetch active session', HTTP_STATUS_CODES.INTERNAL_SERVER_ERROR);
   }
 };
 
@@ -270,7 +258,8 @@ export const terminateMyActiveSession: RequestHandler = async (req: UserRequestI
     await SessionService.terminateUserSessions(Number(userId));
     res.status(200).json({ success: true, message: 'Your active session has been terminated.' });
   } catch (error: any) {
-    res.status(500).json({ error: 'Failed to terminate session', details: error.message });
+    console.error('[SESSION] Error terminating my active session:', error);
+    throw new StatusError('Failed to terminate session', HTTP_STATUS_CODES.INTERNAL_SERVER_ERROR);
   }
 };
 

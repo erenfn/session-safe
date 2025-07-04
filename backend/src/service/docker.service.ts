@@ -17,7 +17,7 @@ export class DockerService {
   /**
    * Create and start a browser session container
    */
-  static async createBrowserSessionContainer(): Promise<{
+  static async createBrowserSessionContainer(vncPassword: string): Promise<{
     containerId: string;
     vncPort: string;
     novncPort: string;
@@ -33,7 +33,7 @@ export class DockerService {
       },
       Env: [
         `COOKIE_ENCRYPTION_KEY=${process.env.COOKIE_ENCRYPTION_KEY}`,
-        `VNC_PASSWORD=${process.env.VNC_PASSWORD}`,
+        `VNC_PASSWORD=${vncPassword}`,
       ],
       HostConfig: {
         PortBindings: {

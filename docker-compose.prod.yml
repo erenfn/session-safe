@@ -1,6 +1,6 @@
 services:
   session-safe-backend:
-    image: session-safe-backend/session-safe-backend:v0
+    image: session-safe-backend/session-safe-backend-prod:v0
     build: 
       context: ./backend/
       dockerfile: Dockerfile.production

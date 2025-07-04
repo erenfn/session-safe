@@ -26,11 +26,12 @@ export interface SessionAttributes {
     username: string;
     email: string;
   };
+  vncPassword: string | null;
 }
 
 export type SessionCreationAttributes = Optional<
   SessionAttributes,
-  'id' | 'containerId' | 'encryptedCookies' | 'status' | 'createdAt' | 'updatedAt' | 'pythonScriptSecret'
+  'id' | 'containerId' | 'encryptedCookies' | 'status' | 'createdAt' | 'updatedAt' | 'pythonScriptSecret' | 'vncPassword'
 >;
 
 export class Session extends Model<SessionAttributes, SessionCreationAttributes> implements SessionAttributes {
@@ -48,6 +49,7 @@ export class Session extends Model<SessionAttributes, SessionCreationAttributes>
     username: string;
     email: string;
   };
+  public vncPassword!: string | null;
 
   public static associate(models: any) {
     Session.belongsTo(models.User, {
@@ -87,6 +89,10 @@ export default (sequelize: Sequelize): typeof Session => {
         allowNull: true,
       },
       pythonScriptSecret: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
+      vncPassword: {
         type: DataTypes.STRING,
         allowNull: true,
       },

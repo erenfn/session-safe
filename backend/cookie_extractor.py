@@ -10,6 +10,8 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import padding
 import glob
 import shutil
+import socket
+from urllib.parse import urlparse, urlunparse
 
 # Updated path for Google Chrome
 CHROME_COOKIE_DB = os.path.expanduser('~/.config/google-chrome/Default/Cookies')
@@ -132,6 +134,7 @@ def extract_cookies(target_domain):
         return None
 
 def post_cookies(encrypted_cookies, api_url, session_id, secret):
+    api_url = resolve_host_in_url(api_url)
     url = f"{api_url}/api/session/{session_id}/cookies"
     headers = {
         "x-python-script-auth": secret
@@ -179,6 +182,31 @@ def main(target_domain, api_url, session_id, secret):
         time.sleep(check_interval_seconds)
 
     print("DEBUG: Timeout: No cookies found after 3 minutes.")
+
+# ---------------------------------------------------------------------------
+# Network helpers
+# ---------------------------------------------------------------------------
+
+def resolve_host_in_url(api_url: str) -> str:
+    """
+    Ensure that the hostname embedded in ``api_url`` is resolvable from inside
+    the current runtime (e.g. inside a Docker container).  If the hostname
+    cannot be resolved – a common situation for ``host.docker.internal`` on
+    Linux unless an explicit host-gateway mapping is supplied – we fall back to
+    using the Docker host gateway IP.  The gateway IP can be overridden via the
+    ``DOCKER_HOST_GATEWAY`` environment variable; otherwise we default to the
+    conventional ``172.17.0.1`` address.
+    """
+    try:
+        parsed = urlparse(api_url)
+        # If hostname resolves successfully, we keep the original URL.
+        socket.gethostbyname(parsed.hostname)
+        return api_url
+    except Exception:
+        gateway_ip = os.environ.get('DOCKER_HOST_GATEWAY', '172.17.0.1')
+        port = f":{parsed.port}" if parsed.port else ''
+        new_netloc = f"{gateway_ip}{port}"
+        return urlunparse(parsed._replace(netloc=new_netloc))
 
 if __name__ == '__main__':
     args = parse_arguments()

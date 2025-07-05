@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import Button from '../Button/Button';
-import { extractCookiesForSession, terminateSession } from '../../services/sessionServices';
+import { extractCookiesForSession, terminateMyActiveSession } from '../../services/sessionServices';
 import toastEmitter, { TOAST_EMITTER_KEY } from '../../utils/toastEmitter';
 import styles from './VNCModal.module.scss';
 import BrowserMenu from './BrowserMenu';
@@ -32,10 +31,8 @@ export default function VNCModal({ open, onClose, novncUrl, sessionId }) {
     if (isClosing) return;
     setIsClosing(true);
     try {
-      if (sessionId) {
-        await terminateSession(sessionId);
-        toastEmitter.emit(TOAST_EMITTER_KEY, 'Session terminated successfully');
-      }
+      await terminateMyActiveSession();
+      toastEmitter.emit(TOAST_EMITTER_KEY, 'Session terminated successfully');
     } catch (e) {
       console.error('Failed to terminate session:', e);
       toastEmitter.emit(TOAST_EMITTER_KEY, 'Failed to terminate session');

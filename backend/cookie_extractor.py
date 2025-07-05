@@ -197,16 +197,23 @@ def resolve_host_in_url(api_url: str) -> str:
     ``DOCKER_HOST_GATEWAY`` environment variable; otherwise we default to the
     conventional ``172.17.0.1`` address.
     """
+    print(f"DEBUG: resolve_host_in_url called with: {api_url}")
     try:
         parsed = urlparse(api_url)
+        print(f"DEBUG: Attempting to resolve hostname: {parsed.hostname}")
         # If hostname resolves successfully, we keep the original URL.
         socket.gethostbyname(parsed.hostname)
+        print(f"DEBUG: Hostname resolved successfully, keeping original URL")
         return api_url
-    except Exception:
+    except Exception as e:
+        print(f"DEBUG: Hostname resolution failed: {e}")
         gateway_ip = os.environ.get('DOCKER_HOST_GATEWAY', '172.17.0.1')
+        print(f"DEBUG: Using gateway IP: {gateway_ip}")
         port = f":{parsed.port}" if parsed.port else ''
         new_netloc = f"{gateway_ip}{port}"
-        return urlunparse(parsed._replace(netloc=new_netloc))
+        resolved_url = urlunparse(parsed._replace(netloc=new_netloc))
+        print(f"DEBUG: Resolved URL: {resolved_url}")
+        return resolved_url
 
 if __name__ == '__main__':
     args = parse_arguments()

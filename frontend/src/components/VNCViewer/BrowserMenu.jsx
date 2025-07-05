@@ -78,25 +78,15 @@ const BrowserMenu = ({ onClose, onTerminate, onDisconnect, isClosing = false, st
   const handleAction = async (action) => {
     setClickedButton(action);
     
-    // Don't close menu immediately for async operations
-    if (action === 'terminate' || action === 'close') {
-      // Keep menu open during async operation
-    } else {
-      setIsMenuOpen(false);
-    }
-    
     switch (action) {
       case 'disconnect':
         onDisconnect();
-        setIsMenuOpen(false);
         break;
       case 'close':
         await onClose();
-        setIsMenuOpen(false);
         break;
       case 'terminate':
         await onTerminate();
-        setIsMenuOpen(false);
         break;
       default:
         break;

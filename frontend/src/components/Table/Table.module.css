@@ -18,3 +18,21 @@
   max-width: 400px;
   overflow-wrap: anywhere;
 }
+
+/* Mobile styles */
+@media screen and (max-width: 768px) {
+  .heading {
+    font-size: 11px !important;
+  }
+  
+  .data {
+    font-size: 11px !important;
+  }
+  
+  .messageWrap {
+    max-width: 120px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}

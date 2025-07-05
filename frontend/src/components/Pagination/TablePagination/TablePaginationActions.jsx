@@ -29,7 +29,23 @@ function TablePaginationActions(props) {
   };
 
   return (
-    <Box sx={{ flexShrink: 0, ml: 2.5 }}>
+    <Box sx={{ 
+      flexShrink: 0, 
+      ml: 2.5,
+      '@media (max-width: 768px)': {
+        ml: 0,
+        '& .MuiIconButton-root': {
+          padding: '2px',
+          margin: '0 1px',
+          minWidth: '24px',
+          width: '24px',
+          height: '24px',
+        },
+        '& .MuiSvgIcon-root': {
+          fontSize: '16px',
+        }
+      }
+    }}>
       <IconButton
         onClick={handleFirstPageButtonClick}
         disabled={page === 0}

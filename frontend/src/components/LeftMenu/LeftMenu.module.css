@@ -50,6 +50,44 @@
   border-radius: 6px;
 }
 
+/* Mobile menu button */
+.mobileMenuButton {
+  position: fixed !important;
+  top: 1rem;
+  left: 1rem;
+  z-index: 1200;
+  background-color: var(--background-color) !important;
+  border: 1px solid #ebebeb !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+}
+
+.mobileMenuButton:hover {
+  background-color: var(--gray-200) !important;
+}
+
+/* Mobile drawer styles */
+.mobileDrawer {
+  z-index: 1300;
+}
+
+.mobileDrawerPaper {
+  width: 280px !important;
+  max-width: 85vw !important;
+}
+
+/* Mobile-specific left menu styles */
+@media screen and (max-width: 768px) {
+  .leftMenu {
+    position: relative;
+    top: auto;
+    height: 100%;
+    min-width: auto;
+    width: 100%;
+    border-right: none;
+    padding: 1rem;
+  }
+}
+
 @media screen and (max-height: 680px) {
   .leftMenu {
     padding-top: 0.5rem;

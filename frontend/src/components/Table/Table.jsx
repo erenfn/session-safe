@@ -26,11 +26,26 @@ export default function CustomTable({ fullData = [], headers = [], data = [] }) 
             <Table sx={{
                 minWidth: 650,
                 overflow: 'hidden',
+                '@media (max-width: 768px)': {
+                    minWidth: 'auto',
+                    fontSize: '12px',
+                }
             }}>
                 <TableHead>
                     <TableRow className={styles.tableHeader}>
                         {tableHeaders.map((header, index) => (
-                            <TableCell key={index} className={styles.heading}>{camelToUppercase(header)}</TableCell>
+                            <TableCell 
+                                key={index} 
+                                className={styles.heading}
+                                sx={{
+                                    '@media (max-width: 768px)': {
+                                        padding: '8px 4px',
+                                        fontSize: '11px',
+                                    }
+                                }}
+                            >
+                                {camelToUppercase(header)}
+                            </TableCell>
                         ))}
                     </TableRow>
                 </TableHead>
@@ -38,7 +53,20 @@ export default function CustomTable({ fullData = [], headers = [], data = [] }) 
                     {tableData.map((row, rowIndex) => (
                         <TableRow key={rowIndex}>
                             {row.map((cell, cellIndex) => (
-                                <TableCell key={cellIndex} className={`${styles.data} ${styles.messageWrap}`}>
+                                <TableCell 
+                                    key={cellIndex} 
+                                    className={`${styles.data} ${styles.messageWrap}`}
+                                    sx={{
+                                        '@media (max-width: 768px)': {
+                                            padding: '8px 4px',
+                                            fontSize: '11px',
+                                            maxWidth: '120px',
+                                            overflow: 'hidden',
+                                            textOverflow: 'ellipsis',
+                                            whiteSpace: 'nowrap',
+                                        }
+                                    }}
+                                >
                                     {typeof cell === 'boolean' ? (
                                         cell ? <DoneIcon style={{ color: 'var(--checkIcon-green)' }} /> : <CloseIcon style={{ color: 'var(--red-500)' }} />
                                     ) : (

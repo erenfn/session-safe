@@ -27,4 +27,13 @@
   height: 100%;
   border: none;
   background: #fff;
+}
+
+/* Mobile styles */
+@media screen and (max-width: 768px) {
+  .modalContent {
+    margin-top: 3.5rem; // space for the buttons
+    width: 95vw;
+    height: calc(95vh - 3.5rem);
+  }
 } 

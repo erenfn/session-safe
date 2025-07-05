@@ -39,6 +39,23 @@ const PaginationTable = ({
       onPageChange={handleChangePage}
       onRowsPerPageChange={handleChangeRowsPerPage}
       ActionsComponent={TablePaginationActions}
+      sx={{
+        '@media (max-width: 768px)': {
+          '& .MuiTablePagination-toolbar': {
+            padding: '2px 4px',
+            minHeight: '36px',
+          },
+          '& .MuiTablePagination-selectLabel': {
+            fontSize: '11px',
+          },
+          '& .MuiTablePagination-displayedRows': {
+            fontSize: '11px',
+          },
+          '& .MuiTablePagination-select': {
+            fontSize: '11px',
+          },
+        }
+      }}
     />
   );
 };

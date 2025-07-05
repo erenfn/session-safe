@@ -6,10 +6,21 @@
   height: 100vh;
   flex-grow: 1;
   overflow-x: hidden;
+  background-color: var(--background-color);
 }
 
 .content-container {
   display: flex;
   flex-grow: 1;
-  background-color: var(--background-color);
+}
+/* Mobile styles */
+@media screen and (max-width: 768px) {
+  .container {
+    min-width: auto;
+  }
+  
+  .content-container {
+    flex-direction: column;
+    margin-top: 4rem;
+  }
 }

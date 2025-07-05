@@ -75,19 +75,28 @@ const BrowserMenu = ({ onClose, onTerminate, onDisconnect, isClosing = false, st
     setIsMenuOpen(!isMenuOpen);
   };
 
-  const handleAction = (action) => {
+  const handleAction = async (action) => {
     setClickedButton(action);
-    setIsMenuOpen(false);
+    
+    // Don't close menu immediately for async operations
+    if (action === 'terminate' || action === 'close') {
+      // Keep menu open during async operation
+    } else {
+      setIsMenuOpen(false);
+    }
     
     switch (action) {
       case 'disconnect':
         onDisconnect();
+        setIsMenuOpen(false);
         break;
       case 'close':
-        onClose();
+        await onClose();
+        setIsMenuOpen(false);
         break;
       case 'terminate':
-        onTerminate();
+        await onTerminate();
+        setIsMenuOpen(false);
         break;
       default:
         break;
@@ -98,7 +107,7 @@ const BrowserMenu = ({ onClose, onTerminate, onDisconnect, isClosing = false, st
   const MenuItem = ({ action, icon: Icon, text }) => (
     <ListItem disablePadding>
       <ListItemButton
-        onClick={() => handleAction(action)}
+        onClick={async () => await handleAction(action)}
         disabled={isClosing}
       >
         <ListItemIcon sx={{ minWidth: 'auto', mr: 1 }}>

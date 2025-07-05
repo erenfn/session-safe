@@ -112,7 +112,7 @@ export class SessionService {
       }
 
       const vncPassword = session.vncPassword || 'password';
-      const novncUrl = `${constants.BASE_URL}/novnc/${session.id}/vnc.html?autoconnect=true&password=${vncPassword}&resize=scale`;
+      const novncUrl = `${constants.BASE_URL}/novnc/${session.id}/vnc.html?autoconnect=true&password=${vncPassword}&resize=scale&websockify=/websockify/${session.id}/`;
       
       return {
         sessionId: session.id,
@@ -170,7 +170,7 @@ export class SessionService {
       vncPort: containerInfo.vncPort,
       novncPort: containerInfo.novncPort,
       containerId: containerInfo.containerId,
-      novncUrl: `${constants.BASE_URL}/novnc/${session.id}/vnc.html?autoconnect=true&password=${vncPassword}&resize=scale`,
+      novncUrl: `${constants.BASE_URL}/novnc/${session.id}/vnc.html?autoconnect=true&password=${vncPassword}&resize=scale&websockify=/websockify/${session.id}/`,
     };
     Logger.info('[SESSION_SERVICE] Session creation completed:', response);
     return response;
@@ -408,7 +408,7 @@ export class SessionService {
       }
 
       const vncPassword = session.vncPassword || 'password';
-      const novncUrl = `${constants.BASE_URL}/novnc/${session.id}/vnc.html?autoconnect=true&password=${vncPassword}&resize=scale`;
+      const novncUrl = `${constants.BASE_URL}/novnc/${session.id}/vnc.html?autoconnect=true&password=${vncPassword}&resize=scale&websockify=/websockify/${session.id}/`;
       
       return {
         sessionId: session.id,

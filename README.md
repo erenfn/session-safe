@@ -35,7 +35,7 @@ npm run docker-up:dev
 
 # Or directly with docker compose
 docker compose -f docker-compose.dev.yml up
-``
+```
 
 ### Production Mode 
 

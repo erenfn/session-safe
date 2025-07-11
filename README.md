@@ -25,18 +25,6 @@ COOKIE_ENCRYPTION_KEY=
 
 Run `build-browser-image.bat` or `build-browser-image.sh` to build the browser image in docker.
 
-### Production Mode (Recommended)
-
-Run the application using Docker Compose:
-
-```bash
-# Using npm script
-npm run docker-up:prod
-
-# Or directly with docker compose
-docker compose -f docker-compose.prod.yml up
-```
-
 ### Development Mode
 
 For local development:
@@ -48,3 +36,16 @@ npm run docker-up:dev
 # Or directly with docker compose
 docker compose -f docker-compose.dev.yml up
 ``
+
+### Production Mode 
+
+Run the application using Docker Compose:
+
+```bash
+# Using npm script
+npm run docker-up:prod
+
+# Or directly with docker compose
+docker compose -f docker-compose.prod.yml up
+```
+

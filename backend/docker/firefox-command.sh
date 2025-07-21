@@ -1,6 +1,8 @@
 #!/bin/bash
 set -e
 
+FILTER_ERR='grep -v "Sandbox: CanCreateUserNamespace()"'
+
 PROFILE_DIR="/home/browser/.mozilla/firefox/session.default"
 
 # ------------------------------------------------------------------
@@ -8,13 +10,13 @@ PROFILE_DIR="/home/browser/.mozilla/firefox/session.default"
 # ------------------------------------------------------------------
 if [ ! -d "${PROFILE_DIR}" ]; then
   echo "DEBUG: Creating first-run Firefox profile in ${PROFILE_DIR}"
-  firefox --headless --CreateProfile "session ${PROFILE_DIR}"
+  firefox --headless --CreateProfile "session ${PROFILE_DIR}" 2> >(eval "$FILTER_ERR" >&2)
 fi
 
 # If the cookie database doesn't exist yet (first container run), spawn headless Firefox once to generate it
 if [ ! -f "${PROFILE_DIR}/cookies.sqlite" ]; then
   echo "DEBUG: Initializing Firefox profile databases..."
-  firefox --headless --profile "${PROFILE_DIR}" "about:blank" &
+  firefox --headless --profile "${PROFILE_DIR}" "about:blank" 2> >(eval "$FILTER_ERR" >&2) &
   INIT_PID=$!
   # Wait up to 20 seconds for cookies.sqlite to be generated
   for i in {1..40}; do
@@ -45,8 +47,4 @@ fi
 # ------------------------------------------------------------------
 # 3) launch Firefox with that profile
 # ------------------------------------------------------------------
-exec firefox \
-     --kiosk \
-     --profile "${PROFILE_DIR}" \
-     --width=1280 --height=800 \
-     "https://www.amazon.com/fmc/pastpurchases/whole-foods-market" 
+exec bash -c "firefox --kiosk --profile \"${PROFILE_DIR}\" --width=1280 --height=800 \"https://www.amazon.com/fmc/pastpurchases/whole-foods-market\" 2> >(grep -v 'Sandbox: CanCreateUserNamespace()' >&2)" 

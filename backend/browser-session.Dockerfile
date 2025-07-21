@@ -9,6 +9,9 @@ ARG VNC_PASSWORD
 # Set environment variables from build arguments
 ENV VNC_PASSWORD=$VNC_PASSWORD
 
+# Disable Firefox content sandbox to suppress EPERM messages
+ENV MOZ_DISABLE_CONTENT_SANDBOX=1
+
 # Create a non-root user for better security
 RUN groupadd -g 1000 browser && \
     useradd -u 1000 -g browser -m -s /bin/bash browser
@@ -29,6 +32,8 @@ RUN apt-get update && \
         python3-pip \
         dbus-x11 \
         wmctrl \
+        libpci3 \
+        libegl1 \
         sudo && \
     add-apt-repository -y ppa:mozillateam/ppa && \
     echo "Package: firefox*" > /etc/apt/preferences.d/mozilla-firefox && \

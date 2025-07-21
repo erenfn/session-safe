@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { createSession, storeSessionCookies, getSessionCookies, terminateAllSessions, terminateUserSessions, getAllSessions, terminateSession, getCurrentUserSessions, extractCookiesForSession, getSessionServiceLogs, getActiveSession, terminateMyActiveSession, getNoVncPort } from '../controllers/session.controller';
+import { createSession, createSessionFromCookies, storeSessionCookies, getSessionCookies, terminateAllSessions, terminateUserSessions, getAllSessions, terminateSession, getCurrentUserSessions, extractCookiesForSession, getSessionServiceLogs, getActiveSession, terminateMyActiveSession, getNoVncPort } from '../controllers/session.controller';
 import authenticateJWT, { adminOnly, adminOrSelf, authenticatePythonScript } from '../middleware/auth.middleware';
 
 const router = Router();
@@ -11,6 +11,7 @@ router.get('/session/logs', authenticateJWT, adminOnly, getSessionServiceLogs);
 
 // User routes
 router.post('/session', authenticateJWT, createSession);
+router.post('/session/:id/clone', authenticateJWT, createSessionFromCookies);
 router.get('/session/:id/cookies', authenticateJWT, getSessionCookies);
 router.post('/session/:id/extract-cookies', authenticateJWT, extractCookiesForSession);
 router.get('/session/my-sessions', authenticateJWT, getCurrentUserSessions);

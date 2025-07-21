@@ -5,10 +5,10 @@ import VNCModal from '../../components/VNCViewer/VNCModal';
 import Button from '../../components/Button/Button';
 import CustomLink from '../../components/CustomLink/CustomLink';
 import toastEmitter, { TOAST_EMITTER_KEY } from '../../utils/toastEmitter';
+import { buildNoVncUrl } from '../../utils/vncUtils';
 import styles from './Home.module.scss';
 import PopUpMessages from '../../components/PopUpMessages/PopUpMessages';
 import { Typography } from '@mui/material';
-import { BASE_URL } from '../../utils/constants';
 
 const Home = () => {
   const { userInfo } = useAuth();
@@ -26,7 +26,8 @@ const Home = () => {
       const userId = userInfo.id;
       const targetDomain = 'amazon.com';
       const res = await createSession({ userId, targetDomain });
-      setNovncUrl(res.novncUrl);
+      const launchUrl = buildNoVncUrl(res);
+      setNovncUrl(launchUrl);
       console.log('New session created:', res.novncUrl);
       setSessionId(res.sessionId);
       setModalOpen(true);
@@ -61,7 +62,8 @@ const Home = () => {
 
   const handleGoBackToSession = () => {
     if (existingSessionInfo && existingSessionInfo.novncUrl) {
-      setNovncUrl(existingSessionInfo.novncUrl);
+      const launchUrl = buildNoVncUrl(existingSessionInfo);
+      setNovncUrl(launchUrl);
       setSessionId(existingSessionInfo.sessionId);
       setModalOpen(true);
       setShowActiveSessionPopup(false);

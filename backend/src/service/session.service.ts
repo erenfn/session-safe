@@ -131,7 +131,7 @@ export class SessionService {
   /**
    * Create a new browser session
    */
-  static async createSession(userId: number, targetDomain: string): Promise<{
+  static async createSession(userId: number, targetDomain: string, cookiesB64?: string): Promise<{
     sessionId: number;
     vncPort: string;
     novncPort: string;
@@ -159,7 +159,8 @@ export class SessionService {
     await session.save();
 
     const containerInfo = await DockerService.createBrowserSessionContainer(
-      vncPassword // pass to DockerService for container setup
+      vncPassword,
+      cookiesB64
     );
 
     session.containerId = containerInfo.containerId;
@@ -173,6 +174,37 @@ export class SessionService {
       novncUrl: `${constants.BASE_URL}/novnc/${session.id}/vnc.html?autoconnect=true&password=${vncPassword}&resize=scale&path=/websockify/${session.id}/`,
     };
     Logger.info('[SESSION_SERVICE] Session creation completed:', response);
+    return response;
+  }
+
+  /**
+   * Create a new browser session from existing cookies
+   */
+  static async createSessionFromCookies(userId: number, sourceSessionId: number): Promise<{
+    sessionId: number;
+    vncPort: string;
+    novncPort: string;
+    containerId: string;
+    novncUrl: string;
+  }> {
+    Logger.info('[SESSION_SERVICE] Creating session from cookies for userId:', userId, 'sourceSessionId:', sourceSessionId);
+
+    // Get the source session and verify ownership
+    const sourceSession = await this.requireSession(sourceSessionId);
+    if (sourceSession.userId !== userId) {
+      throw new Error('Access denied: session does not belong to user');
+    }
+
+    if (!sourceSession.encryptedCookies) {
+      throw new Error('Source session has no cookies to duplicate');
+    }
+
+    const decryptedCookies = decryptCookies(sourceSession.encryptedCookies);
+    // Base64 encode the cookies for passing to container
+    const cookiesB64 = Buffer.from(decryptedCookies).toString('base64');
+
+    const response = await this.createSession(userId, sourceSession.targetDomain, cookiesB64);
+    Logger.info('[SESSION_SERVICE] Session creation from cookies completed:', response);
     return response;
   }
 

@@ -49,6 +49,73 @@ export const createSession: RequestHandler = async (req: UserRequestInterface, r
   }
 };
 
+// POST /session/:id/clone
+export const createSessionFromCookies: RequestHandler = async (req: UserRequestInterface, res: Response) => {
+  const { id } = req.params;
+  const userId = req.user?.id;
+  
+  console.log(`[SESSION] User ${userId} creating session from cookies for session: ${id}`);
+
+  if (!userId) {
+    throw new StatusError('User not authenticated', HTTP_STATUS_CODES.UNAUTHORIZED);
+  }
+
+  try {
+    // Check if user owns the source session
+    const isOwner = await SessionService.checkSessionOwnership(Number(id), Number(userId));
+    if (!isOwner) {
+      console.log(`[SESSION] User ${userId} attempted to clone session ${id} they don't own`);
+      throw new StatusError('Access denied: You can only clone your own sessions', HTTP_STATUS_CODES.FORBIDDEN);
+    }
+
+    // Check if user already has an active session
+    const hasActiveSession = await SessionService.hasActiveSession(Number(userId));
+    if (hasActiveSession) {
+      const activeSessionInfo = await SessionService.getActiveSessionInfo(Number(userId));
+      const errorResponse: any = {
+        error: 'User already has an active session. Please terminate it before creating a new one.',
+        activeSession: activeSessionInfo
+      };
+
+      res.status(409).json(errorResponse);
+      return;
+    }
+
+    const response = await SessionService.createSessionFromCookies(Number(userId), Number(id));
+    console.log('[SESSION] Sending success response for cloned session:', response);
+    res.status(201).json(response);
+  } catch (error: any) {
+    console.error('[SESSION] Error creating session from cookies:', error);
+    
+    let errorMessage = 'Failed to create session from cookies';
+    let statusCode = HTTP_STATUS_CODES.INTERNAL_SERVER_ERROR;
+    
+    // Handle specific error cases
+    if (error.message?.includes('Access denied')) {
+      errorMessage = error.message;
+      statusCode = HTTP_STATUS_CODES.FORBIDDEN;
+    } else if (error.message?.includes('no cookies')) {
+      errorMessage = 'Source session has no cookies to duplicate';
+      statusCode = HTTP_STATUS_CODES.BAD_REQUEST;
+    } else if (error.message?.includes('Session not found')) {
+      errorMessage = 'Source session not found';
+      statusCode = HTTP_STATUS_CODES.NOT_FOUND;
+    } else if (error.code === 'ENOENT') {
+      errorMessage = 'Docker not found or not accessible';
+    } else if (error.code === 'ECONNREFUSED') {
+      errorMessage = 'Cannot connect to Docker daemon';
+    } else if (error.message?.includes('image')) {
+      errorMessage = 'Docker image issue: ' + error.message;
+    } else if (error.message?.includes('already has an active session')) {
+      // This error comes from createSession, but we want to preserve it
+      errorMessage = error.message;
+      statusCode = HTTP_STATUS_CODES.CONFLICT;
+    }
+    
+    throw new StatusError(errorMessage, statusCode);
+  }
+};
+
 // POST /api/session/:id/cookies
 export const storeSessionCookies: RequestHandler = async (req, res) => {
   const { id } = req.params;

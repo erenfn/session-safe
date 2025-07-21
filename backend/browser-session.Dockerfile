@@ -45,6 +45,10 @@ RUN pip3 install requests cryptography
 COPY cookie_extractor.py /usr/local/bin/cookie_extractor.py
 RUN chmod +x /usr/local/bin/cookie_extractor.py
 
+# Copy cookie injector script and set permissions
+COPY cookie_injector.py /app/cookie_injector.py
+RUN chmod +x /app/cookie_injector.py
+
 # Set up Fluxbox configuration for the browser user
 RUN mkdir -p /home/browser/.fluxbox
 COPY docker/fluxbox-init /home/browser/.fluxbox/init

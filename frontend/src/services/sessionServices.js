@@ -40,6 +40,16 @@ export const createSession = async (sessionData) => {
   }
 };
 
+// Create a new session from existing cookies
+export const createSessionFromCookies = async (sessionId) => {
+  try {
+    const response = await apiClient.post(`/session/${sessionId}/clone`);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
 // Get session cookies
 export const getSessionCookies = async (sessionId) => {
   try {

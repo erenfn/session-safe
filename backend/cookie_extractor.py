@@ -18,6 +18,7 @@ CHROME_COOKIE_DB = os.path.expanduser('~/.config/google-chrome/Default/Cookies')
 
 # Updated path for Mozilla Firefox (browser user)
 FIREFOX_PROFILE_PATH = '/home/browser/.mozilla/firefox/'
+FIXED_PROFILE_PATH = '/home/browser/.mozilla/firefox/session.default'
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Extract cookies from Firefox for a specific domain')
@@ -41,6 +42,12 @@ def encrypt_data(data: bytes, key: bytes) -> str:
     return base64.b64encode(iv + ct).decode('utf-8')
 
 def get_firefox_cookie_db():
+    # First check the fixed profile path used by our containers
+    fixed_cookie_db = os.path.join(FIXED_PROFILE_PATH, 'cookies.sqlite')
+    if os.path.exists(fixed_cookie_db):
+        print(f"DEBUG: Using fixed profile cookie database: {fixed_cookie_db}")
+        return fixed_cookie_db
+
     print(f"DEBUG: Looking for Firefox profiles in: {FIREFOX_PROFILE_PATH}")
     if not os.path.exists(FIREFOX_PROFILE_PATH):
         print(f"DEBUG: Firefox profile path does not exist: {FIREFOX_PROFILE_PATH}")

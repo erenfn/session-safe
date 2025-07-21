@@ -5,17 +5,21 @@ import {
   IconButton,
   Tooltip,
   Alert,
+  CircularProgress,
 } from '@mui/material';
 import {
   Refresh as RefreshIcon,
   Cookie as CookieIcon,
+  Launch as LaunchIcon,
 } from '@mui/icons-material';
 import CustomTable from '../../components/Table/Table';
 import LoadingPage from '../../components/LoadingPage/LoadingPage';
 import PaginationTable from '../../components/Pagination/TablePagination/PaginationTable';
 import CookiesDialog from './components/CookiesDialog';
-import { getCurrentUserSessions, getSessionCookies } from '../../services/sessionServices';
+import VNCModal from '../../components/VNCViewer/VNCModal';
+import { getCurrentUserSessions, getSessionCookies, createSessionFromCookies } from '../../services/sessionServices';
 import toastEmitter, { TOAST_EMITTER_KEY } from '../../utils/toastEmitter';
+import { buildNoVncUrl } from '../../utils/vncUtils';
 import { getStatusColor } from './helpers/statusColors';
 import styles from './Sessions.module.scss';
 
@@ -26,6 +30,10 @@ const MySessions = () => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [cookiesDialog, setCookiesDialog] = useState({ open: false, sessionId: null, cookies: null, loading: false });
+  const [vncModalOpen, setVncModalOpen] = useState(false);
+  const [novncUrl, setNovncUrl] = useState('');
+  const [sessionId, setSessionId] = useState(null);
+  const [creatingSessionFromCookies, setCreatingSessionFromCookies] = useState(null);
 
   const fetchSessions = async () => {
     try {
@@ -54,6 +62,45 @@ const MySessions = () => {
     }
   };
 
+  const handleCreateSessionFromCookies = async (sessionId) => {
+    try {
+      setCreatingSessionFromCookies(sessionId);
+      const response = await createSessionFromCookies(sessionId);
+      
+      toastEmitter.emit(TOAST_EMITTER_KEY, 'New session created from cookies successfully!');
+      
+      // Open VNC modal instead of new window
+      const launchUrl = buildNoVncUrl(response);
+      setNovncUrl(launchUrl);
+      setSessionId(response.sessionId);
+      setVncModalOpen(true);
+      
+      // Refresh the sessions list
+      fetchSessions();
+    } catch (err) {
+      console.error('Error creating session from cookies:', err);
+      
+      // Handle specific error cases
+      if (err.response?.status === 409) {
+        // User already has an active session
+        toastEmitter.emit(TOAST_EMITTER_KEY, 'You already have an active session. Please terminate it first.');
+      } else if (err.response?.data?.error) {
+        toastEmitter.emit(TOAST_EMITTER_KEY, err.response.data.error);
+      } else {
+        toastEmitter.emit(TOAST_EMITTER_KEY, 'Failed to create session from cookies');
+      }
+    } finally {
+      setCreatingSessionFromCookies(null);
+    }
+  };
+
+  const handleCloseVncModal = () => {
+    setVncModalOpen(false);
+    setSessionId(null);
+    setNovncUrl('');
+    fetchSessions();
+  };
+
   const closeCookiesDialog = () => {
     setCookiesDialog({ open: false, sessionId: null, cookies: null, loading: false });
   };
@@ -69,6 +116,9 @@ const MySessions = () => {
 
   const transformSessionsForTable = () => {
     return sessions.map(session => {
+      const isCreatingThisSession = creatingSessionFromCookies === session.id;
+      const isAnySessionCreating = creatingSessionFromCookies !== null;
+      
       return {
         id: session.id,
         targetDomain: session.targetDomain,
@@ -76,23 +126,46 @@ const MySessions = () => {
         createdAt: formatDate(session.createdAt),
         hasCookies: session.hasCookies,
         actions: (
-          <Tooltip title={session.hasCookies ? "Show cookies" : "No cookies available"}>
-            <Box component="span" className={styles.actionButton}>
-              <IconButton
-                size="small"
-                onClick={() => session.hasCookies && handleShowCookies(session.id)}
-                disabled={!session.hasCookies || loading}
-                className={styles.iconButton}
-              >
-                <CookieIcon 
-                  style={{ 
-                    color: session.hasCookies ? 'var(--primary)' : 'var(--second-text-color)',
-                    fontSize: '16px'
-                  }}
-                />
-              </IconButton>
-            </Box>
-          </Tooltip>
+          <>
+            <Tooltip title={session.hasCookies ? "Show cookies" : "No cookies available"}>
+              <Box component="span" className={styles.actionButton}>
+                <IconButton
+                  size="small"
+                  onClick={() => session.hasCookies && handleShowCookies(session.id)}
+                  disabled={!session.hasCookies || loading || isAnySessionCreating}
+                  className={styles.iconButton}
+                >
+                  <CookieIcon 
+                    style={{ 
+                      color: session.hasCookies ? 'var(--primary)' : 'var(--second-text-color)',
+                      fontSize: '16px'
+                    }}
+                  />
+                </IconButton>
+              </Box>
+            </Tooltip>
+            <Tooltip title="Launch new session from cookies">
+              <Box component="span" className={styles.actionButton}>
+                <IconButton
+                  size="small"
+                  onClick={() => session.hasCookies && handleCreateSessionFromCookies(session.id)}
+                  disabled={!session.hasCookies || loading || isAnySessionCreating}
+                  className={styles.iconButton}
+                >
+                  {isCreatingThisSession ? (
+                    <CircularProgress size={16} color="inherit" />
+                  ) : (
+                    <LaunchIcon 
+                      style={{ 
+                        color: session.hasCookies ? 'var(--primary)' : 'var(--second-text-color)',
+                        fontSize: '16px'
+                      }}
+                    />
+                  )}
+                </IconButton>
+              </Box>
+            </Tooltip>
+          </>
         )
       };
     });
@@ -177,6 +250,13 @@ const MySessions = () => {
         onClose={closeCookiesDialog}
         cookies={cookiesDialog.cookies}
         loading={cookiesDialog.loading}
+      />
+
+      <VNCModal
+        open={vncModalOpen}
+        onClose={handleCloseVncModal}
+        novncUrl={novncUrl}
+        sessionId={sessionId}
       />
     </Box>
   );
